@@ -25,24 +25,22 @@ SECRET_KEY = os.getenv(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
+# settings.py around line 35-45
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
-# Application definition
-# 1. Allow the domain to serve the app
-# ALLOWED_HOSTS = [
-#     'whatsapp-1-vectra-app.xqqhik.easypanel.host', 
-#     'localhost', 
-#     '127.0.0.1',
-# ]
+# 1. Clean up ALLOWED_HOSTS and ensure no empty strings or whitespace
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "*").split(",") if h.strip()]
 
-# 2. Trust the origin for CSRF (This is the critical part for your error)
-# This automatically turns your ALLOWED_HOSTS into trusted HTTPS origins
-# CSRF_TRUSTED_ORIGINS = [f"https://{host.strip()}" for host in ALLOWED_HOSTS if host.strip()]
-
-# Explicitly trust the Easypanel domain
+# 2. Hardcode the production origin to be 100% sure it's included correctly
 CSRF_TRUSTED_ORIGINS = [
-    'https://whatsapp-1-vectra-app.xqqhik.easypanel.host',
+    "https://whatsapp-1-vectra-app.xqqhik.easypanel.host",
 ]
+
+# 3. Add any other dynamic hosts from ALLOWED_HOSTS
+for host in ALLOWED_HOSTS:
+    if host != "*":
+        origin = f"https://{host}"
+        if origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origin)
 
 
 # 3. Ensure cookies work over HTTPS (Since Easypanel uses SSL)
