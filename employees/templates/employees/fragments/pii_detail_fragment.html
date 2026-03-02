@@ -1,0 +1,16 @@
+<div class="card shadow-sm border-primary">
+    <div class="card-header bg-primary text-white d-flex justify-content-between">
+        <h5 class="my-1">Personal & Contact Details</h5>
+        
+        <button class="btn btn-warning btn-sm"
+                hx-get="{% url 'employees:edit_pii_form' pk=employee.pk %}"
+                hx-target="#pii-section-container" 
+                hx-swap="outerHTML">
+            Edit PII
+        </button>
+    </div>
+    <div class="card-body">
+        <p><strong>Nationality:</strong> {{ employee.nationality|default:'N/A' }}</p>
+        <p><strong>Emergency Contact:</strong> {{ employee.emergency_contact_name|default:'N/A' }} ({{ employee.emergency_contact_phone_number|default:'N/A' }})</p>
+        </div>
+</div>

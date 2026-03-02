@@ -1,0 +1,32 @@
+<div id="id_locations_container">
+
+{{ locations }}
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label font-weight-bold mb-0">Eligible Locations</label>
+        {% if locations %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="select-all-locs" 
+                   onclick="toggleAllLocations(this)">
+            <label class="form-check-label small text-muted" for="select-all-locs">Select All</label>
+        </div>
+        {% endif %}
+    </div>
+
+    <select name="locations" id="id_locations" class="form-control" multiple style="height: 150px;">
+        {% for loc in locations %}
+            <option value="{{ loc.id }}">{{ loc.name }}</option>
+        {% empty %}
+            <option disabled>No established branches for this role.</option>
+        {% endfor %}
+    </select>
+
+    <script>
+        function toggleAllLocations(source) {
+            const select = document.getElementById('id_locations');
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = source.checked;
+            }
+        }
+    </script>
+</div>

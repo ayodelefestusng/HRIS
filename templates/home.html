@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Engineering Africa's Intelligent Future - Dignity Concept Limited{% endblock %}
+
+{% block content %}
+    <section id="hero" class="d-flex align-items-center position-relative" style="min-height: 85vh; background-color: #0d1a2d; overflow: hidden;">
+        <div class="position-absolute w-100 h-100" style="opacity: 0.15; top: 0; left: 0; z-index: 1;">
+            <img src="{% static 'images/abstract_network_bg.jpg' %}" alt="Abstract Digital Transformation Background" class="w-100 h-100 object-fit-cover">
+        </div>
+        
+        <div class="container position-relative z-2 py-5 text-center text-lg-start">
+            <div class="row justify-content-center justify-content-lg-start">
+                <div class="col-lg-10 col-xl-8">
+                    <h1 class="display-3 fw-bold mb-3" style="color: #0072CE;">
+                        Engineering Africa's Intelligent Future.
+                    </h1>
+                    <p class="lead text-white-50 mb-5">
+                        We unify data, analytics, and AI to help you scale with confidence and lead your industry.
+                    </p>
+                    
+                    <div class="d-flex flex-column flex-md-row justify-content-center justify-content-lg-start gap-3">
+                        {% comment %} <a href="{% url 'demo_page' %}" class="btn btn-lg fw-bold px-5 text-dark" style="background-color: #00B140; border-color: #00B140;"> {% endcomment %}
+                        <a href="{% url 'users:solutions_overview' %}" class="btn btn-lg fw-bold px-5 text-dark" style="background-color: #00B140; border-color: #00B140;">
+ 
+                            Book a Demo &rarr;
+                        </a>
+                        <a href="{% url 'users:solutions_overview' %}" class="btn btn-lg btn-outline-light fw-bold px-5" style="border-color: #0072CE; color: #0072CE;">
+                            Explore Our Solutions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <section id="client-logos" class="py-4 py-md-5 bg-white">
+        <div class="container">
+            <h5 class="text-center text-muted text-uppercase mb-4 fw-light">Trusted by Africa's Industry Leaders</h5>
+            <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3 align-items-center justify-content-center">
+                {% comment %} Loop through client logos or place static images {% endcomment %}
+                {% for i in "123456"|make_list %}
+                <div class="col text-center">
+                    <img src="{% static 'images/client_logo_'|add:i|add:'.png' %}" alt="Client Logo {{ i }}" class="img-fluid opacity-50 hover-opacity-100 transition-3s" style="max-height: 40px;">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <section id="capabilities" class="py-5 py-md-7 bg-light">
+        <div class="container">
+            <h2 class="text-center mb-5 fw-bold" style="color: #0d1a2d;">Our Core Technological Prowess</h2>
+            <div class="row g-4">
+                {% for capability in capabilities %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm p-4 text-center hover-lift transition-3s">
+                        <div class="card-body">
+                            <div class="icon-box mb-3 mx-auto" style="color: #0072CE; font-size: 2.5rem;">
+                                {{ capability.icon|safe }}
+                            </div>
+                            <h4 class="fw-bold">{{ capability.title }}</h4>
+                            <p class="text-muted small">{{ capability.description }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% with capabilities=all_capabilities %}
+        {% endwith %}
+    </section>
+    <style>
+        /* CSS for the capabilities section: In a real project, this would be in a static CSS file */
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+        }
+        .transition-3s {
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
+    <script>
+        // Placeholder for Core Capabilities Data for presentation purposes
+        const all_capabilities = [
+            { title: "Software Engineering", icon: '<i class="bi bi-code-slash"></i>', description: "Custom, scalable, and secure application development." },
+            { title: "Data & Analytics", icon: '<i class="bi bi-bar-chart-line"></i>', description: "Turning raw data into strategic, predictive insights." },
+            { title: "Machine Learning & AI", icon: '<i class="bi bi-robot"></i>', description: "Deploying agentic AI and RAG for superior performance." },
+            { title: "Business Advisory", icon: '<i class="bi bi-briefcase"></i>', description: "Strategic roadmaps and digital transformation consulting." }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const capabilitiesSection = document.getElementById('capabilities');
+            const capabilitiesContainer = capabilitiesSection.querySelector('.row.g-4');
+            capabilitiesContainer.innerHTML = '';
+            
+            all_capabilities.forEach(cap => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-3';
+                col.innerHTML = `
+                    <div class="card h-100 border-0 shadow-sm p-4 text-center hover-lift transition-3s">
+                        <div class="card-body">
+                            <div class="icon-box mb-3 mx-auto" style="color: #0072CE; font-size: 2.5rem;">
+                                ${cap.icon}
+                            </div>
+                            <h4 class="fw-bold">${cap.title}</h4>
+                            <p class="text-muted small">${cap.description}</p>
+                        </div>
+                    </div>
+                `;
+                capabilitiesContainer.appendChild(col);
+            });
+        });
+    </script>
+
+    <hr>
+
+    <section id="solutions-preview" class="py-5 py-md-7 bg-white">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold" style="color: #0d1a2d;">Solutions Built for Tomorrow's Challenges</h2>
+                <p class="lead text-muted">A look into how we transform critical business areas across your enterprise.</p>
+            </div>
+            
+            <div class="row g-4">
+                {% comment %} Placeholder loop for the main solution areas {% endcomment %}
+                {% for solution in solutions_preview %}
+                <div class="col-lg-6">
+                    <div class="card h-100 border-0 shadow-lg hover-shadow-lg transition-3s">
+                        <div class="card-body p-4 p-md-5">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="me-3" style="font-size: 2rem; color: #0072CE;">{{ solution.icon|safe }}</span>
+                                <h4 class="card-title mb-0 fw-bold">{{ solution.title }}</h4>
+                            </div>
+                            <p class="card-text text-muted">{{ solution.summary }}</p>
+                            <a href="{% url solution.url_name %}" class="btn btn-sm text-decoration-none fw-bold" style="color: #00B140;">
+                                Learn More <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="text-center mt-5">
+                {% comment %} <a href="{% url 'solutions_overview' %}" class="btn btn-outline-primary btn-lg px-4" style="border-color: #0072CE;"> {% endcomment %}
+                                    <a href="{% url 'users:solutions_overview' %}" class="btn btn-outline-primary btn-lg px-4" style="border-color: #0072CE;">
+
+                    View All {{ solutions_preview|length }}+ Solutions
+                </a>
+            </div>
+        </div>
+    </section>
+    <script>
+        // Placeholder for Solutions Preview Data
+        const solutions_preview = [
+            { title: "Intelligent Customer Experience", icon: '<i class="bi bi-people"></i>', summary: "Create hyper-personalized customer journeys using data and AI for maximum retention.", url_name: 'solution_cx' },
+            { title: "Enterprise Analytics & Risk Management", icon: '<i class="bi bi-shield-lock"></i>', summary: "Mitigate risk and ensure compliance with predictive analytics and real-time monitoring.", url_name: 'solution_risk' },
+            { title: "AI-Powered HR Platform", icon: '<i class="bi bi-person-gear"></i>', summary: "Streamline talent acquisition, engagement, and performance with a unified AI platform.", url_name: 'solution_hr' },
+            { title: "Unified Commerce & Payments Engine", icon: '<i class="bi bi-bag"></i>', summary: "Secure, seamless payment and commerce solutions that scale across physical and digital channels.", url_name: 'solution_commerce' }
+        ];
+
+        // This would also be dynamic in a real application. The loop above is a Django placeholder.
+    </script>
+
+    <hr>
+
+    <section id="dignity-engine" class="py-5 py-md-7 text-white" style="background-color: #0d1a2d;">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-7">
+                    <h2 class="display-5 fw-bold mb-3" style="color: #0072CE;">The Dignity Concept Engine: Our Core Differentiator</h2>
+                    <p class="lead mb-4">
+                        We don't just use technology; we engineer the next generation of enterprise intelligence. Our platform is built on **Agentic AI**, **Retrieval-Augmented Generation (RAG)**, and **Fortress-Grade Security**.
+                    </p>
+                    <ul class="list-unstyled mb-4">
+                        <li class="d-flex align-items-start mb-2"><i class="bi bi-check-circle-fill me-2" style="color: #00B140;"></i> Agentic AI for true decision automation.</li>
+                        <li class="d-flex align-items-start mb-2"><i class="bi bi-check-circle-fill me-2" style="color: #00B140;"></i> Microservices architecture for unmatched scalability.</li>
+                        <li class="d-flex align-items-start mb-2"><i class="bi bi-check-circle-fill me-2" style="color: #00B140;"></i> Zero-Trust Security baked into every layer.</li>
+                    </ul>
+                    {% comment %} <a href="{% url 'platform_detail' %}" class="btn btn-outline-light btn-lg px-4 fw-bold"> {% endcomment %}
+                     <a href="{% url 'users:solutions_overview' %}" class="btn btn-outline-light btn-lg px-4 fw-bold">
+
+                        
+                        Deep Dive into Our Platform &rarr;
+                    </a>
+                </div>
+                <div class="col-lg-5 mt-4 mt-lg-0 text-center">
+                    <img src="{% static 'images/abstract_utp_graphic.png' %}" alt="Unique Technology Proposition Graphic" class="img-fluid rounded shadow-lg" style="max-height: 300px;">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <section id="industries" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold" style="color: #0d1a2d;">Industry Expertise, Applied Intelligence</h2>
+                <p class="lead text-muted">We deliver tailored solutions that meet the complex regulatory and operational needs of Africa's key sectors.</p>
+            </div>
+            
+            <div class="row g-4 text-center">
+                {% for industry in industries_served %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="p-4 border rounded shadow-sm hover-shadow-lg transition-3s bg-white">
+                        <i class="bi {{ industry.icon }} mb-3" style="font-size: 2rem; color: #0072CE;"></i>
+                        <h5 class="fw-bold">{{ industry.title }}</h5>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="text-center mt-5">
+                {% comment %} <a href="{% url 'industries_detail' %}" class="btn btn-outline-secondary btn-lg px-4"> {% endcomment %}
+                                   <a href="{% url 'users:solutions_overview' %}" class="btn btn-outline-secondary btn-lg px-4">
+
+                    See Industry Case Studies
+                </a>
+            </div>
+        </div>
+    </section>
+    <script>
+        // Placeholder for Industries Data
+        const industries_served = [
+            { title: "Banking", icon: "bi-bank" },
+            { title: "Insurance", icon: "bi-journals" },
+            { title: "Oil & Gas", icon: "bi-fuel-pump" },
+            { title: "Retail", icon: "bi-shop" }
+        ];
+        // The loop above is a Django placeholder, which would iterate over this data.
+    </script>
+
+    <hr>
+
+    <section id="final-cta" class="py-5 py-md-7 text-white" style="background-color: #0072CE;">
+        <div class="container text-center">
+            <h2 class="display-5 fw-bold mb-3">Ready to Engineer Your Intelligent Future?</h2>
+            <p class="lead mb-4">
+                Talk to one of our solution architects today to see a personalized demo tailored to your biggest business challenges.
+            </p>
+            {% comment %} <a href="{% url 'demo_page' %}" class="btn btn-lg fw-bold px-5 text-dark hover-shadow-lg" style="background-color: #00B140; border-color: #00B140;"> {% endcomment %}
+                            <a href="{% url 'users:solutions_overview' %}" class="btn btn-lg fw-bold px-5 text-dark hover-shadow-lg" style="background-color: #00B140; border-color: #00B140;">
+
+                Book Your Personal Demo Now &rarr;
+            </a>
+        </div>
+    </section>
+    
+    <div id="live-chat-widget-placeholder" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+        {% comment %} 
+            The script for Tawk.to/Intercom/Drift will be placed here or in base.html.
+            It will be styled with Primary Blue.
+        {% endcomment %}
+        </div>
+
+{% endblock content %}

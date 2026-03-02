@@ -1,0 +1,471 @@
+<!-- templates/partials/header.html -->
+ {% load static %}
+<header class="header sticky-top">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container">
+            <!-- Logo -->
+            <a class="navbar-brand" href="{% url 'users:home' %}">
+                <img src="{% static 'images/ayulalogo.png' %}" 
+                     alt="Dignity Concept Limited" 
+                     height="40"
+                     class="dignity-logo">
+                <span class="visually-hidden">Dignity Concept Limited</span>
+            </a>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#navbarMain" aria-controls="navbarMain" 
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Main Navigation -->
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav me-auto" >
+                    <!-- Solutions Dropdown -->
+                   
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="solutionsDropdown" 
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Solutions
+                        </a>
+                        <ul class="dropdown-menu shadow" aria-labelledby="solutionsDropdown">
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                                    Solutions Overview
+                                </a>
+
+                                   {% comment %} <a class="dropdown-item" href="{% url 'users:solutions_overview' %}">
+                                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                                    Solutions Overview
+                                </a> {% endcomment %}
+
+
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-users me-2 text-primary"></i>
+                                    Intelligent Customer Experience
+                                </a>
+
+
+  {% comment %} <a class="dropdown-item" href="{% url 'users:solution_detail' 'intelligent-customer-experience' %}">
+                                    <i class="fas fa-users me-2 text-primary"></i>
+                                    Intelligent Customer Experience
+                                </a> {% endcomment %}
+
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-chart-bar me-2 text-primary"></i>
+                                    Enterprise Analytics & Risk Management
+                                </a>
+
+
+
+                                {% comment %} <a class="dropdown-item" href="{% url 'users:solution_detail' 'enterprise-analytics-risk-management' %}">
+                                    <i class="fas fa-chart-bar me-2 text-primary"></i>
+                                    Enterprise Analytics & Risk Management
+                                </a> {% endcomment %}
+
+                            </li>
+                            <li>
+                           
+                                <a class="dropdown-item" href="{% url 'hr:chat_home' %}">
+                                    <i class="fas fa-user-tie me-2 text-primary"></i>
+                                    AI-Powered HR Platform
+                                </a>
+
+
+     {% comment %} <a class="dropdown-item" href="{% url 'users:solution_detail' 'ai-powered-hr-platform' %}">
+                                    <i class="fas fa-user-tie me-2 text-primary"></i>
+                                    AI-Powered HR Platform
+                                </a> {% endcomment %}
+
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-shopping-cart me-2 text-primary"></i>
+                                    Unified Commerce & Payments
+                                </a>
+
+
+{% comment %} <a class="dropdown-item" href="{% url 'users:solution_detail' 'unified-commerce-payments' %}">
+                                    <i class="fas fa-shopping-cart me-2 text-primary"></i>
+                                    Unified Commerce & Payments
+                                </a> {% endcomment %}
+
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-robot me-2 text-primary"></i>
+                                    Process Automation (RPA)
+                                </a>
+
+{% comment %} 
+   <a class="dropdown-item" href="{% url 'users:solution_detail' 'process-automation' %}">
+                                    <i class="fas fa-robot me-2 text-primary"></i>
+                                    Process Automation (RPA)
+                                </a> {% endcomment %}
+
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-receipt me-2 text-primary"></i>
+                                    Tax Management Solution
+                                </a>
+
+{% comment %} 
+    <a class="dropdown-item" href="{% url 'users:solution_detail' 'tax-management' %}">
+                                    <i class="fas fa-receipt me-2 text-primary"></i>
+                                    Tax Management Solution
+                                </a> {% endcomment %}
+
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Platform -->
+                    <li class="nav-item">
+                        
+                      <a class="nav-link" href="#">
+                        {% comment %} <a class="nav-link" href="{% url 'users:platform' %}"> {% endcomment %}
+                            Platform
+                        </a>
+                    </li>
+
+                    <!-- Industries -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="industriesDropdown" 
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Industries
+                        </a>
+                        <ul class="dropdown-menu shadow" aria-labelledby="industriesDropdown">
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                {% comment %} <a class="dropdown-item" href="{% url 'users:industries' %}#banking"> {% endcomment %}
+
+                                    <i class="fas fa-university me-2 text-primary"></i>
+                                    Banking & Financial Services
+                                </a>
+                            </li>
+                            <li>
+                             
+                                <a class="dropdown-item" href= "#">
+                                  {% comment %} <a class="dropdown-item" href="{% url 'users:industries' %}#insurance"> {% endcomment %}
+                                    <i class="fas fa-shield-alt me-2 text-primary"></i>
+                                    Insurance
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href= "#">
+                                  {% comment %} <a class="dropdown-item" href="{% url 'users:industries' %}#oil-gas"> {% endcomment %}
+                                    <i class="fas fa-gas-pump me-2 text-primary"></i>
+                                    Oil & Gas
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href= "#">
+
+                                  {% comment %} <a class="dropdown-item" href="{% url 'users:industries' %}#retail"> {% endcomment %}
+                                    <i class="fas fa-shopping-bag me-2 text-primary"></i>
+                                    Retail & E-commerce
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- About -->
+                    <li class="nav-item">
+                        <a class="nav-link" href= "#">
+                        {% comment %} <a class="nav-link" href="{% url 'users:about' %}"> {% endcomment %}
+                            About Us
+                        </a>
+                    </li>
+
+                    <!-- Contact -->
+                    <li class="nav-item">
+                        <a class="nav-link" href= "#">
+                          {% comment %} <a class="nav-link" href="{% url 'users:contact' %}"> {% endcomment %}
+                            Contact
+                        </a>
+                    </li>
+                </ul>
+{% block smart_office %}
+ 
+{% endblock %}
+
+                <!-- CTA Buttons -->
+                <div class="d-flex align-items-center gap-2">
+                    {% comment %} <a href="{% url 'users:solutions_overview' %}" class="btn btn-outline-primary btn-sm">
+                        Explore Solutions {% endcomment %}
+                     <button class="btn btn-outline-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#solutionsOffcanvas" aria-controls="solutionsOffcanvas">
+                        Our Products       
+                    </button>   
+                    {% comment %} <a href="{% url 'users:demo_booking' %}" class="btn btn-primary btn-sm" style="background-color: #0072CE;">
+                      
+                      <i class="fas fa-calendar-check me-1"></i>
+                      Book Demo
+                  </a>  {% endcomment %}
+<!-- Calendly link widget begin -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+
+<a href="#" 
+
+onclick="Calendly.initPopupWidget({url: 'https://calendly.com/demo-dignityconceptgoba/dignity_concept?hide_gdpr_banner=1'});return false;"
+   class="btn btn-primary btn-sm" 
+   style="background-color: #0072CE;">
+   <i class="fas fa-calendar-check me-1"></i>  Book Demo
+</a>
+<!-- Calendly link widget end -->
+
+
+
+
+
+
+
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+<!-- Offcanvas for Solutions (Mobile) -->
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="solutionsOffcanvas" aria-labelledby="solutionsOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 id="solutionsOffcanvasLabel">Explore Solutions</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+
+<!-- AI Section -->
+<div class="mb-4">
+  <h6 class="d-flex align-items-center">
+    <svg width="24" height="24" fill="currentColor" class="me-2 text-primary">
+      <use xlink:href="#icon-brain"/>
+    </svg>
+    <i class="bi bi-openai">AI</i>
+  </h6>
+
+  <div class="d-flex flex-wrap gap-3">
+    <!-- Chat Bot -->
+    <a href="{% url 'ai:chat_home' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+             class="bi bi-chat-left-quote-fill text-primary mb-2" viewBox="0 0 16 16">
+          <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4.414a1 1 0 0 0-.707.293L.854 15.146A.5.5 0 0 1 0 14.793zm7.194 2.766..."/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Chat Bot</p>
+      </div>
+    </a>
+
+    <!-- AI-HR -->
+    <a href="{% url 'hr:chat_home' %}"class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+             class="bi bi-people text-primary mb-2" viewBox="0 0 16 16">
+          <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c..."/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">AI-HR</p>
+      </div>
+    </a>
+
+    <!-- Smart Office -->
+    <a href="{% url 'smart_office:document_list' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+             class="bi bi-file-earmark-text text-primary mb-2" viewBox="0 0 16 16">
+          <path d="M5 7h6v1H5V7zm0 2h6v1H5V9zm0 2h4v1H5v-1z"/>
+          <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h6.5L14 4.5zM13 4.5L9.5 1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Smart Office</p>
+      </div>
+    </a>
+  </div>
+</div>
+
+
+
+
+    <!-- Payment Section -->
+    <div class="mb-4">
+      <h6 class="d-flex align-items-center">
+        <svg width="24" height="24" fill="currentColor" class="me-2 text-primary"><use xlink:href="#icon-brain"/></svg>
+        <i class="bi bi-openai">Payment</i>
+        
+      </h6>
+      <div class="d-flex flex-wrap gap-3">
+     <a  href="#" class="text-decoration-none">
+  <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+ <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-currency-exchange text-success" viewBox="0 0 16 16">
+  <path d="M0 5a.5.5 0 0 1 .5-.5h2.707l-.147-.146a.5.5 0 1 1 .707-.708l1 1a.5.5 0 0 1 0 .708l-1 1a.5.5 0 0 1-.707-.708l.147-.146H.5A.5.5 0 0 1 0 5zm16 6a.5.5 0 0 1-.5.5h-2.707l.147.146a.5.5 0 0 1-.707.708l-1-1a.5.5 0 0 1 0-.708l1-1a.5.5 0 0 1 .707.708l-.147.146H15.5a.5.5 0 0 1 .5.5z"/>
+  <path d="M6.5 3a.5.5 0 0 1 .5.5V4h2a.5.5 0 0 1 0 1H7v1h2a.5.5 0 0 1 0 1H7v1h2a.5.5 0 0 1 0 1H7v.5a.5.5 0 0 1-1 0V9H4a.5.5 0 0 1 0-1h2V7H4a.5.5 0 0 1 0-1h2V5H4a.5.5 0 0 1 0-1h2v-.5a.5.5 0 0 1 .5-.5z"/>
+</svg>
+    <p class="text-muted fw-semibold mb-0">Cross Border</p>
+  </div>
+{% comment %} <a  href="#" class="text-decoration-none"> {% endcomment %}
+   <a href="{% url 'loans:home' %}" class="text-decoration-none">
+  <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+         class="bi bi-people text-primary mb-2" viewBox="0 0 16 16">
+      <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
+    </svg>
+    
+    <p class="text-muted fw-semibold mb-0">Loan Manager  </p>
+  </div>
+</a>
+      </div>
+    </div>
+
+
+    {% comment %} <!-- E-Commerce Section -->
+    <div class="mb-4">
+      <h6 class="d-flex align-items-center">
+        <svg width="24" height="24" fill="currentColor" class="me-2 text-warning"><use xlink:href="#icon-cart"/></svg>
+        E-Commerce
+      </h6>
+      <div class="d-flex flex-wrap gap-3">
+        <a href="{% url 'users:solution_detail' 'buyrite' %}">
+          <img src="{% static 'images/buyrite.png' %}" alt="Buyrite" class="img-thumbnail" width="100">
+        </a>
+        <a href="{% url 'users:solution_detail' 'hotel-services' %}">
+          <img src="{% static 'images/hotel.png' %}" alt="Hotel Services" class="img-thumbnail" width="100">
+        </a>
+        <a href="{% url 'users:solution_detail' 'laundry' %}">
+          <img src="{% static 'images/laundry.png' %}" alt="Laundry" class="img-thumbnail" width="100">
+        </a>
+      </div>
+    </div> {% endcomment %}
+
+
+
+<div class="mb-4">
+  <h6 class="d-flex align-items-center">
+    <svg width="24" height="24" fill="currentColor" class="me-2 text-warning">
+      <use xlink:href="#icon-cart" >
+    </svg>
+    <span class="fw-semibold">E-Commerce</span>
+  </h6>
+  <div class="d-flex flex-wrap gap-3">
+
+    <!-- Buyrite -->
+    <a href="{% url 'buyrite:home' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+                 <img src="{% static 'images/buyrite.png' %}" alt="Buyrite" class="img-thumbnail" width="100">
+
+        <p class="text-muted fw-semibold mb-0">Buyrite</p>
+      </div>
+    </a>
+
+    <!-- Hotel Services -->
+    <a href="{% url 'store:home' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#0072CE"
+             class="bi bi-house-door mb-2" viewBox="0 0 16 16">
+          <path d="M8.354 1.146a.5.5 0 0 0-.708 0L1 7.793V14.5a.5.5 0 0 0 .5.5H6v-4h4v4h4.5a.5.5 0 0 0 .5-.5V7.793l-7.146-6.647z"/>
+          <path d="M13 2.5v6.793l-5-4.647-5 4.647V2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5z"/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Hotel Services</p>
+      </div>
+    </a>
+
+    <!-- Laundry -->
+    <a href="{% url 'laundry:customer_order' %}"class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#00B140"
+             class="bi bi-droplet mb-2" viewBox="0 0 16 16">
+          <path d="M4.5 8.5a3.5 3.5 0 1 1 7 0c0 1.933-1.567 3.5-3.5 3.5S4.5 10.433 4.5 8.5z"/>
+          <path d="M8 0C4.686 0 2 3.134 2 6.5c0 2.5 2 4.5 6 4.5s6-2 6-4.5C14 3.134 11.314 0 8 0z"/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Laundry</p>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+
+
+    <!-- Operations Section (Requires Authentication) -->
+    {% comment %} {% if user.is_authenticated %}
+    <div class="mb-4">
+      <h6 class="d-flex align-items-center">
+        <svg width="24" height="24" fill="currentColor" class="me-2 text-danger"><use xlink:href="#icon-gear"/></svg>
+        Operations
+      </h6>
+      <div class="d-flex flex-wrap gap-3">
+        <a href="{% url 'users:solution_detail' 'ecommerce-operations' %}">
+          <img src="{% static 'images/ecommerce-op.png' %}" alt="Ecommerce Operation" class="img-thumbnail" width="100">
+        </a>
+        <a href="{% url 'users:solution_detail' 'laundry-operations' %}">
+          <img src="{% static 'images/laundry-op.png' %}" alt="Laundry Operation" class="img-thumbnail" width="100">
+        </a>
+        <a href="{% url 'users:solution_detail' 'buyrite-operations' %}">
+          <img src="{% static 'images/buyrite-op.png' %}" alt="Buyrite Operation" class="img-thumbnail" width="100">
+        </a>
+      </div>
+    </div>
+    {% endif %} {% endcomment %}
+
+    {% if user.is_authenticated %}
+<div class="mb-4">
+  <h6 class="d-flex align-items-center">
+    <svg width="24" height="24" fill="currentColor" class="me-2 text-danger">
+      <use xlink:href="#icon-gear" />
+    </svg>
+    <span class="fw-semibold">Operations</span>
+  </h6>
+  <div class="d-flex flex-wrap gap-3">
+
+    <!-- Ecommerce Operation -->
+    <a href="{% url 'users:solution_detail' 'ecommerce-operations' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+             class="bi bi-shop text-danger mb-2" viewBox="0 0 16 16">
+          <path d="M2 2v2h12V2H2zm0 3v9h12V5H2zm1 1h10v7H3V6z"/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Ecommerce Operation</p>
+      </div>
+    </a>
+
+    <!-- Laundry Operation -->
+    <a href="{% url 'laundry:admin_dashboard' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+             class="bi bi-droplet-half text-danger mb-2" viewBox="0 0 16 16">
+          <path d="M8 0C4.686 0 2 3.134 2 6.5c0 2.5 2 4.5 6 4.5s6-2 6-4.5C14 3.134 11.314 0 8 0z"/>
+          <path d="M8 10.5c-1.933 0-3.5-1.567-3.5-3.5a3.5 3.5 0 1 1 7 0c0 1.933-1.567 3.5-3.5 3.5z"/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Laundry Operation</p>
+      </div>
+    </a>
+
+    <!-- Buyrite Operation -->
+    <a href="{% url 'buyrite:home' %}" class="text-decoration-none">
+      <div class="d-flex flex-column align-items-center p-3 border rounded-3 shadow-sm hover-shadow transition bg-light">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
+             class="bi bi-box-seam text-danger mb-2" viewBox="0 0 16 16">
+          <path d="M8.5.134a.5.5 0 0 0-.5 0L1.5 3.5v9l6.5 3.366 6.5-3.366v-9L8.5.134zM2 4.5l6 3.115v7.77L2 12.27v-7.77zm12 0v7.77l-6 3.115v-7.77l6-3.115z"/>
+        </svg>
+        <p class="text-muted fw-semibold mb-0">Buyrite Operation</p>
+      </div>
+    </a>
+
+  </div>
+</div>
+{% endif %}
+
+  </div>
+
+</div>
+<svg style="display: none;">
+  <symbol id="icon-brain" viewBox="0 0 24 24"><path d="..."/></symbol>
+  <symbol id="icon-wallet" viewBox="0 0 24 24"><path d="..."/></symbol>
+  <symbol id="icon-cart" viewBox="0 0 24 24"><path d="..."/></symbol>
+  <symbol id="icon-gear" viewBox="0 0 24 24"><path d="..."/></symbol>
+</svg>

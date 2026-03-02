@@ -1,0 +1,8 @@
+<div class="alert alert-info">
+    <h5>Role: {{ role.job_title.name }}</h5>
+    <p>{{ role.job_title.description|default:"No description available." }}</p>
+</div>
+
+<div id="id_locations_container" hx-swap-oob="true">
+    {% include "partials/location_selector.html" with locations=locations %}
+</div>

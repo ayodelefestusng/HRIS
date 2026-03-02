@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load workflow_extras %}
+
+{% block extra_css %}
+<style>
+    .paper-sheet {
+        background: #fff;
+        padding: 4rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border-radius: 4px;
+        min-height: 29.7cm; /* A4 aspect ratio */
+        position: relative;
+    }
+    .watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 8rem;
+        color: rgba(0,0,0,0.03);
+        pointer-events: none;
+        white-space: nowrap;
+        font-weight: 900;
+        z-index: 0;
+    }
+    .metadata-row {
+        border-bottom: 1px solid #f0f0f0;
+        padding: 1rem 0;
+    }
+    .label {
+        font-weight: 700;
+        color: #64748b;
+        width: 150px;
+        display: inline-block;
+    }
+    .content-area {
+        line-height: 1.8;
+        color: #1e293b;
+        font-size: 1.1rem;
+        position: relative;
+        z-index: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Action Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-{% if doc.status == 'approved' %}success{% elif doc.status == 'rejected' %}danger{% else %}info{% endif %} mb-2">
+                {{ doc.get_status_display }}
+            </span>
+            <h2 class="mb-0">{{ doc.subject }}</h2>
+            <small class="text-muted">Ref: {{ doc.ref_no|default:"DRAFT" }} | Type: {{ doc.get_doc_type_display }}</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'workflow:inbox' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+            {% if user.employee == doc.initiator and doc.status == 'draft' %}
+            <button class="btn btn-primary">Edit Draft</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9">
+            <!-- The "Paper" -->
+            <div class="paper-sheet mb-4">
+                <div class="watermark">{{ doc.get_status_display|upper }}</div>
+                
+                <div class="header-section mb-5 text-center">
+                    <h3 class="fw-bold">{{ branding.tenant_name|upper }}</h3>
+                    <h5 class="text-secondary">{{ doc.get_doc_type_display|upper }}</h5>
+                    <hr class="my-4">
+                </div>
+
+                <div class="metadata-section mb-5">
+                    <div class="metadata-row">
+                        <span class="label">FROM:</span>
+                        <span>{{ doc.sender_unit.name }}</span>
+                    </div>
+                    <div class="metadata-row">
+                        <span class="label">TO:</span>
+                        <span>{{ doc.recipient }}</span>
+                    </div>
+                    <div class="metadata-row">
+                        <span class="label">DATE:</span>
+                        <span>{{ doc.created_at|date:"F j, Y" }}</span>
+                    </div>
+                    <div class="metadata-row">
+                        <span class="label">SUBJECT:</span>
+                        <span class="fw-bold">{{ doc.subject|upper }}</span>
+                    </div>
+                </div>
+
+                <div class="content-area">
+                    {{ doc.content|safe }}
+                </div>
+
+                {% if doc.attachment %}
+                <div class="mt-5 pt-4 border-top">
+                    <h6 class="text-xs font-weight-bold text-uppercase">Attachments</h6>
+                    <a href="{{ doc.attachment.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                        <i class="bi bi-file-earmark-arrow-down"></i> View Attachment
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Diff Section (If applicable) -->
+            {% if show_diff %}
+            <div class="card shadow-sm border-0 mb-4 bg-light">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-git me-2"></i>Proposed Changes (Diff)</h6>
+                    <span class="badge bg-soft-warning text-warning">Changes by Reviewer</span>
+                </div>
+                <div class="card-body">
+                    <p class="text-xs text-secondary mb-3">Review the edits suggested by the reviewer below. You can accept these changes or discuss them in the comments.</p>
+                    <div class="table-responsive rounded border bg-white">
+                        {{ doc|get_doc_diff }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-3">
+            <!-- Sidebar Info -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold">Signatories</h6>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item px-3 py-3">
+                            <small class="text-xs text-muted d-block uppercase font-weight-bold">Initiator</small>
+                            <span class="fw-bold">{{ doc.initiator.full_name }}</span>
+                        </li>
+                        <li class="list-group-item px-3 py-3">
+                            <small class="text-xs text-muted d-block uppercase font-weight-bold">Reviewer</small>
+                            <span class="fw-bold">{{ doc.reviewer.full_name }}</span>
+                        </li>
+                        <li class="list-group-item px-3 py-3">
+                            <small class="text-xs text-muted d-block uppercase font-weight-bold">Concurrence</small>
+                            {% for c in doc.concurrence_list.all %}
+                            <span class="badge bg-light text-dark">{{ c.full_name }}</span>
+                            {% endfor %}
+                        </li>
+                        <li class="list-group-item px-3 py-3">
+                            <small class="text-xs text-muted d-block uppercase font-weight-bold">Approvers</small>
+                            {% for a in doc.approver_list.all %}
+                            <span class="badge bg-light text-dark">{{ a.full_name }}</span>
+                            {% endfor %}
+                        </li>
+                        <li class="list-group-item px-3 py-3">
+                            <small class="text-xs text-muted d-block uppercase font-weight-bold">Final Approver</small>
+                            <span class="fw-bold">{{ doc.final_approver.full_name }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Audit Trail (Workflow History) -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold">Audit Trail</h6>
+                </div>
+                <div class="card-body">
+                    <!-- This would be linked to the WorkflowInstance's history -->
+                    <small class="text-muted">View standard workflow history for full tracking.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

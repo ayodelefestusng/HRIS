@@ -1,0 +1,56 @@
+<!-- templates/roster.html -->
+<h2>Shift Roster</h2>
+
+<form method="get">
+  <label for="start_date">Start Date:</label>
+  <input type="date" id="start_date" name="start_date" required value="{{ start_date }}">
+
+  <label for="end_date">End Date:</label>
+  <input type="date" id="end_date" name="end_date" required value="{{ end_date }}">
+
+  <label for="shift_id">Shift:</label>
+<select id="shift_id" name="shift_id" required>
+  <option value="">-- Select Shift --</option>
+  {% for shift in shifts %}
+    <option value="{{ shift.id }}" {% if shift_id == shift.id|stringformat:"s" %}selected{% endif %}>
+      {{ shift.name }} ({{ shift.start_time }} - {{ shift.end_time }}) 
+      [{{ shift.days_of_week }}] - Needs {{ shift.employees_required }} staff
+    </option>
+  {% endfor %}
+</select>
+  <label for="employees_per_shift">Employees per Shift:</label>
+  <input type="number" id="employees_per_shift" name="employees_per_shift" min="1" required value="{{ employees_per_shift|default:1 }}">
+
+  <button type="submit">Generate Roster</button>
+</form>
+
+{% if assignments %}
+  {% regroup assignments by date as roster_by_date %}
+  {% for day in roster_by_date %}
+    <h3>{{ day.grouper }}</h3>
+    {% regroup day.list by shift as shifts_by_day %}
+    <table border="1" style="margin-bottom:20px; width:100%;">
+      <thead>
+        <tr>
+          <th>Shift</th>
+          <th>Employees Assigned</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shift_group in shifts_by_day %}
+          <tr>
+            <td>
+              {{ shift_group.grouper.name }}
+              ({{ shift_group.grouper.start_time }} - {{ shift_group.grouper.end_time }})
+            </td>
+            <td>
+              {% for assignment in shift_group.list %}
+                {{ assignment.employee.name }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+{% endif %}

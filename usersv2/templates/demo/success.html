@@ -1,0 +1,89 @@
+<!-- templates/demo/success.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Demo Request Received - Dignity Concept Limited{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <!-- Success Icon -->
+            <div class="success-icon mb-4">
+                <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex p-4">
+                    <i class="fas fa-check-circle text-success fa-4x"></i>
+                </div>
+            </div>
+            
+            <!-- Success Message -->
+            <h1 class="display-5 fw-bold text-success mb-3">Demo Request Received!</h1>
+            <p class="lead mb-4">
+                Thank you for your interest in Dignity Concept. We've received your demo request and our team will contact you within 24 hours to confirm your scheduled time.
+            </p>
+            
+            <!-- Next Steps -->
+            <div class="next-steps bg-light rounded-3 p-4 mb-5">
+                <h3 class="h5 fw-semibold mb-3">What Happens Next?</h3>
+                <div class="row text-start">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-start">
+                            <span class="badge bg-primary rounded-circle p-2 me-3">1</span>
+                            <div>
+                                <h6 class="fw-semibold mb-1">Confirmation Call</h6>
+                                <p class="small text-muted mb-0">We'll call to confirm details and answer initial questions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-start">
+                            <span class="badge bg-primary rounded-circle p-2 me-3">2</span>
+                            <div>
+                                <h6 class="fw-semibold mb-1">Calendar Invite</h6>
+                                <p class="small text-muted mb-0">You'll receive a calendar invite with meeting details</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-start">
+                            <span class="badge bg-primary rounded-circle p-2 me-3">3</span>
+                            <div>
+                                <h6 class="fw-semibold mb-1">Personalized Demo</h6>
+                                <p class="small text-muted mb-0">45-minute session tailored to your business needs</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="d-flex flex-wrap justify-content-center gap-3 mb-5">
+                <a href="{% url 'home' %}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-home me-2"></i>Back to Home
+                </a>
+                <a href="{% url 'solutions_overview' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket me-2"></i>Explore Solutions
+                </a>
+            </div>
+            
+            <!-- Contact Information -->
+            <div class="bg-primary text-white rounded-3 p-4">
+                <h4 class="h5 mb-3">Need Immediate Assistance?</h4>
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <i class="fas fa-envelope me-2"></i>
+                        <a href="mailto:demos@dignityconcept.com" class="text-white text-decoration-none">
+                            demos@dignityconcept.com
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <i class="fas fa-phone me-2"></i>
+                        <a href="tel:+234123456789" class="text-white text-decoration-none">
+                            +234 123 456 789
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

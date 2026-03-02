@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sidebar Info -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="avatar avatar-xl bg-gradient-info shadow-sm rounded-circle mb-3">
+                        {{ application.candidate.full_name|first }}
+                    </div>
+                    <h5>{{ application.candidate.full_name }}</h5>
+                    <p class="text-muted text-sm">{{ application.candidate.email }}</p>
+                    <hr class="horizontal dark my-3">
+                    <div class="text-start">
+                        <p class="text-sm"><strong>Applying for:</strong> {{ application.job_posting.title }}</p>
+                        {% if application.job_posting.locations.exists %}
+                             <p class="text-sm"><strong>Locations:</strong> {{ application.job_posting.locations.all|join:", " }}</p>
+                        {% endif %}
+                        <p class="text-sm"><strong>Status:</strong>
+                            <span class="badge {% if application.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {% if application.status == 'rejected' %}REJECTED{% else %}{{ application.get_status_display }}{% endif %}
+                            </span>
+                        </p>
+                        <p class="text-sm"><strong>Submitted:</strong> {{ application.submitted_at }}</p>
+                    </div>
+
+                    <div class="mt-4">
+                        {% if application.resume %}
+                            <a href="{{ application.resume.url }}" class="btn btn-dark w-100 mb-2" target="_blank" rel="noopener">View Resume</a>
+                            <div class="mt-2" style="max-height:300px; overflow:auto;">
+                                <object data="{{ application.resume.url }}" type="application/pdf" width="100%" height="300">
+                                    <a href="{{ application.resume.url }}">Download Resume</a>
+                                </object>
+                            </div>
+                        {% elif application.candidate.resume %}
+                            <a href="{{ application.candidate.resume.url }}" class="btn btn-dark w-100 mb-2" target="_blank" rel="noopener">View Resume</a>
+                            <div class="mt-2" style="max-height:300px; overflow:auto;">
+                                <object data="{{ application.candidate.resume.url }}" type="application/pdf" width="100%" height="300">
+                                    <a href="{{ application.candidate.resume.url }}">Download Resume</a>
+                                </object>
+                            </div>
+                        {% else %}
+                            <button class="btn btn-dark w-100 mb-2" disabled>No resume uploaded</button>
+                        {% endif %}
+                    </div>
+
+                    <div class="mt-3">
+                        <form method="post" action="{% url 'ats:reject_application' application.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger w-100" onclick="return confirm('Are you sure you want to reject this application?');">Reject Application</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6>Application Details & Timeline</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Tabs or Sections -->
+                    <ul class="nav nav-tabs mb-3" id="appTabs" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" id="notes-tab" data-bs-toggle="tab" href="#notes" role="tab">Notes</a></li>
+                        <li class="nav-item"><a class="nav-link" id="interviews-tab" data-bs-toggle="tab" href="#interviews" role="tab">Interviews</a></li>
+                    </ul>
+                    
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="notes">
+                            <textarea class="form-control" placeholder="Add a note..."></textarea>
+                            <button class="btn btn-sm btn-primary mt-2">Save Note</button>
+                            
+                            <div class="mt-4">
+                                <h6 class="text-sm">History</h6>
+                                <div class="timeline timeline-one-side">
+                                    <!-- Timeline items stub -->
+                                    <div class="timeline-block mb-3">
+                                        <span class="timeline-step">
+                                            <i class="ni ni-bell-55 text-success text-gradient"></i>
+                                        </span>
+                                        <div class="timeline-content">
+                                            <h6 class="text-dark text-sm font-weight-bold mb-0">Application Received</h6>
+                                            <p class="text-secondary font-weight-bold text-xs mt-1 mb-0">{{ application.submitted_at }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="interviews">
+                            {% for interview in application.interviews.all %}
+                                <div class="alert alert-light border">
+                                    <h6>{{ interview.scheduled_at }}</h6>
+                                    <p class="text-sm mb-0">Interviewers: {{ interview.interviewers.all|join:", " }}</p>
+                                </div>
+                            {% empty %}
+                                <p class="text-muted">No interviews scheduled.</p>
+                                <a href="{% url 'ats:schedule_interview' application.pk %}" class="btn btn-sm btn-primary">Schedule Now</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

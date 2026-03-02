@@ -1,0 +1,47 @@
+
+      <nav class="navbar navbar-expand-lg bg-body-tertiary fixed-top">
+
+
+
+        <div class="container-fluid" style="box-shadow: 0 4px 8px rgba(0,0,0,0.2); background: linear-gradient(90deg, #00B140 0%, #0072CE 100%);">
+          <a class="navbar-brand d-flex align-items-center" >
+            <img  width="100" height="30" class="rounded shadow-sm me-2">
+            <span class="" style="color:white "></span>
+          </a>
+          
+      </div>
+                
+      </nav>
+<div class="container-fluid">
+    <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-md-6 col-lg-5">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <h2 class="mb-4">Hello {{ user.full_name|default:user.username }},</h2>
+                    <p class="mb-3"> Click the button below to set a  password:</p>
+                    <div class="text-center mb-4">
+                        <a href="{{ ceate_link }}" class="btn btn-primary">Create Password</a>
+                    </div>
+                    <p>If you didn’t request this, you can safely ignore this email.</p>
+                    <hr>
+                    <p class="mt-4 mb-0 text-muted">Best regards,<br><strong>Dignity Technologies</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+         <!-- Footer -->
+           <footer class="bg-dark text-white text-center py-3"
+          style="box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.2);
+                 background: linear-gradient(90deg, #00B140 0%, #0072CE 100%);
+                 height: 40px;">
+    <p class="mb-0"> Copyright &copy;  2025 Dignity Concept. </p>
+  </footer>

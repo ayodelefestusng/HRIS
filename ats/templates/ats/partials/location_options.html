@@ -1,0 +1,5 @@
+{% for location in locations %}
+<option value="{{ location.id }}">{{ location.name }}</option>
+{% empty %}
+<option value="">No locations found for this selection</option>
+{% endfor %}

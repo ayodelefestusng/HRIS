@@ -1,0 +1,109 @@
+{% extends "base.html" %} 
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Creation Form -->
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h5>Delegate Authority</h5>
+          <p class="text-sm text-muted">Restrict delegation to your downlines for a specific period.</p>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label class="form-label">Delegate To (Downlines Only)</label>
+                {{ form.delegatee }}
+                {% if form.delegatee.errors %}
+                    <div class="text-danger text-xs small">{{ form.delegatee.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label">Start Date</label>
+                    {{ form.start_date }}
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label">End Date</label>
+                    {{ form.end_date }}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Workflow Type (Optional)</label>
+                {{ form.workflow_type }}
+                <small class="text-muted text-xs">Leave blank for all workflows.</small>
+            </div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-dark w-100">
+                Create Delegation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- List of Existing Delegations -->
+    <div class="col-md-7">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center pb-0">
+          <h5>Your Active Delegations</h5>
+          <form method="get" class="d-flex gap-2">
+            <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Search delegatee or workflow...">
+            <button type="submit" class="btn btn-sm btn-outline-dark mb-0">Search</button>
+          </form>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Delegatee</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Workflow</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Period</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for d in delegations %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ d.delegatee.full_name }}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ d.workflow_type.name|default:"All Workflows" }}</p>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="text-xs text-secondary font-weight-bold">{{ d.start_date }} - {{ d.end_date }}</span>
+                  </td>
+                  <td class="align-middle text-center">
+                    <span class="badge badge-sm bg-gradient-{% if d.is_active and d.is_valid %}success{% else %}secondary{% endif %}">
+                        {% if d.is_active and d.is_valid %}Active{% else %}Inactive{% endif %}
+                    </span>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center py-4">
+                        <p class="text-xs text-muted mb-0">No delegations found.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

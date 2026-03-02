@@ -1,0 +1,81 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="card">
+    <div class="card-header pb-0">
+      <h5>Pending Leave Requests</h5>
+    </div>
+    <div class="card-body px-0 pt-0 pb-2">
+      <div class="table-responsive p-0">
+        <table class="table align-items-center mb-0">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Details</th>
+              <th>Reason</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for req in requests %}
+            <tr>
+              <td class="px-4">
+                <div class="d-flex px-2 py-1">
+                  <div class="d-flex flex-column justify-content-center">
+                    <h6 class="mb-0 text-sm">{{ req.employee.full_name }}</h6>
+                    <p class="text-xs text-secondary mb-0">
+                      {{ req.employee.department.name }}
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <p class="text-xs font-weight-bold mb-0">
+                  {{ req.leave_type.name }}
+                </p>
+                <p class="text-xs text-secondary mb-0">
+                  {{ req.start_date }} to {{ req.end_date }}
+                </p>
+              </td>
+              <td class="align-middle text-sm">
+                <span class="text-secondary text-xs"
+                  >{{ req.reason|truncatechars:50 }}</span
+                >
+              </td>
+              <td class="align-middle">
+                <form
+                  method="post"
+                  action="{% url 'leave:approve_leave' req.pk %}"
+                  class="d-flex gap-2"
+                >
+                  {% csrf_token %}
+                  <button
+                    type="submit"
+                    name="action"
+                    value="approve"
+                    class="btn btn-xs btn-success"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="submit"
+                    name="action"
+                    value="reject"
+                    class="btn btn-xs btn-danger"
+                  >
+                    Reject
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center p-4">No pending requests.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

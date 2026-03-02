@@ -1,0 +1,102 @@
+<nav class="navbar navbar-expand-lg border-bottom sticky-top 
+    {% if current_mode == 'admin' %}navbar-dark bg-slate-950 border-slate-800{% else %}navbar-light bg-white{% endif %}" 
+    id="main-nav">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center fw-bold" href="/">
+            <div class="bg-primary rounded-3 p-1 me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                <i class="bi bi-rocket-takeoff-fill text-white fs-6"></i>
+            </div>
+            <span class="tracking-tight {% if current_mode == 'admin' %}text-white{% endif %}">
+                {{ request.tenant.name|default:"Gemini HRIS" }}
+            </span>
+        </a>
+
+        <div class="ms-auto me-4 d-none d-md-block">
+            <div class="mode-switcher-pill p-1 d-flex gap-1" 
+                 style="background: {% if current_mode == 'admin' %}#1e293b{% else %}#f1f5f9{% endif %}; border-radius: 50px;">
+                
+                <button hx-post="{% url 'core:toggle_mode' %}?mode=employee" 
+                        hx-target="body" 
+                        class="btn btn-sm rounded-pill px-3 transition-all {% if current_mode == 'employee' %}btn-primary shadow-sm{% else %}text-muted{% endif %}">
+                    <i class="bi bi-person-circle me-1"></i> Me
+                    {#  User Full Name ({{ request.user.full_name}})  #}
+                    {#  Employee Name: {{ request.user.hr_profile.first_name }} {{ request.user.hr_profile.last_name }}  #}
+                    {#  Role Type: {% for role in request.user.hr_profile.jobrole_set.all %}
+                                {{ role.get_role_type_display }}
+                                {% empty %}
+                                    No Role Assigned
+                                {% endfor %}  #}
+
+                    {#  Role Type2: {{ request.user.hr_profile.role_type}}  #}
+
+                    {#  {% if request.user.employee.job_role.role_type == "HEAD" %}
+                    <span class="badge bg-danger">Unit Head</span>
+                    {% elif request.user.employee.job_role.role_type == "DEPUTY" %}
+                    <span class="badge bg-warning">Deputy</span>
+                {% else %}
+                    <span class="badge bg-secondary">Team Member</span>
+                {% endif %}
+                                      #}
+
+
+                </button>
+
+                {#  {% if request.user.employee.is_manager %}  #}
+                {% if request.user.employee.job_role.role_type == "HEAD" %}
+                <button hx-post="{% url 'core:toggle_mode' %}?mode=manager" 
+                        hx-target="body" 
+                        class="btn btn-sm rounded-pill px-3 transition-all {% if current_mode == 'manager' %}btn-primary shadow-sm{% else %}text-muted{% endif %}">
+                    <i class="bi bi-people-fill me-1"></i> Team
+                </button>
+                {% endif %}
+
+                {% if request.user.employee.is_hr_admin %}
+                <button hx-post="{% url 'core:toggle_mode' %}?mode=admin" 
+                        hx-target="body" 
+                        class="btn btn-sm rounded-pill px-3 transition-all {% if current_mode == 'admin' %}btn-light shadow-sm{% else %}text-muted{% endif %}">
+                    <i class="bi bi-shield-lock-fill me-1"></i> Admin
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-link text-muted p-0 d-none d-sm-block" onclick="openSearch()">
+                <kbd class="bg-light text-muted border py-1 px-2 small shadow-xs">Ctrl + K</kbd>
+            </button>
+
+            {#  <div class="dropdown" hx-get="{% url 'get_notifications' %}" hx-trigger="every 30s">  #}
+                <button class="btn btn-link position-relative p-1 text-muted" data-bs-toggle="dropdown">
+                    <i class="bi bi-bell fs-5"></i>
+                    {% if unread_notifications %}
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+                    {% endif %}
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0 overflow-hidden" style="width: 320px;">
+                    <div class="p-3 border-bottom bg-light fw-bold small uppercase">Notifications</div>
+                    <div id="notification-items" class="max-h-400 overflow-y-auto">
+                        </div>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn btn-link p-0 d-flex align-items-center gap-2 text-decoration-none" data-bs-toggle="dropdown">
+                    <img src="{{ request.user.employee.avatar.url|default:'/static/img/default-avatar.png' }}" 
+                         class="rounded-circle border" width="36" height="36">
+                    <div class="text-start d-none d-lg-block">
+                        <div class="fw-bold small {% if current_mode == 'admin' %}text-white{% else %}text-dark{% endif %}">
+                            {{ request.user.get_full_name }}
+                        </div>
+                        <div class="text-muted" style="font-size: 10px;">{{ request.user.employee.job_title }}</div>
+                    </div>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                    <li><a class="dropdown-item py-2" href="#"><i class="bi bi-person me-2"></i> My Profile</a></li>
+                    <li><a class="dropdown-item py-2" href="#"><i class="bi bi-gear me-2"></i> Account Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2 text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>

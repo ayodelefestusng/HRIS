@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .details { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .details td, .details th { border: 1px solid #ddd; padding: 8px; }
+        .total { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Payslip</h1>
+        <h3>{{ period.name }}</h3>
+    </div>
+
+    <div>
+        <strong>Employee:</strong> {{ employee.first_name }} {{ employee.last_name }}<br>
+        <strong>Employee ID:</strong> {{ employee.employee_id }}<br>
+        <strong>Department:</strong> {{ employee.department.name|default:"-" }}
+    </div>
+    <br>
+
+    <table class="details">
+        <tr>
+            <th>Earnings</th>
+            <th>Amount</th>
+        </tr>
+        <tr>
+            <td>Basic Salary</td>
+            <td>{{ payslip.basic_salary }}</td>
+        </tr>
+        {% for item in items %}
+            {% if item.category == 'EARNING' %}
+            <tr>
+                <td>{{ item.label }}</td>
+                <td>{{ item.amount }}</td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+        <tr class="total">
+            <td>Gross Pay</td>
+            <td>{{ payslip.gross_pay }}</td>
+        </tr>
+    </table>
+
+    <table class="details">
+        <tr>
+            <th>Deductions</th>
+            <th>Amount</th>
+        </tr>
+        {% for item in items %}
+            {% if item.category == 'DEDUCTION' %}
+            <tr>
+                <td>{{ item.label }}</td>
+                <td>{{ item.amount }}</td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+        <tr class="total">
+            <td>Total Deductions</td>
+            <td>{{ payslip.total_deductions }}</td>
+        </tr>
+    </table>
+
+    <h3>Net Pay: {{ payslip.net_pay }}</h3>
+
+</body>
+</html>

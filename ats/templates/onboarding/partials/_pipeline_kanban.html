@@ -1,0 +1,34 @@
+<div class="d-flex overflow-auto gap-3 py-3" style="min-height: 70vh;">
+    {% for stage_code, stage_name in stages %}
+    <div class="kanban-column bg-slate-900 border border-slate-800 rounded-3 p-3" style="min-width: 300px;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-white fw-bold mb-0 x-small uppercase ls-1">{{ stage_name }}</h6>
+            <span class="badge bg-slate-700 text-slate-300">
+                {{ applications|filter_by_stage:stage_code|length }}
+            </span>
+        </div>
+
+        <div class="candidate-list" id="stage-{{ stage_code }}" 
+             hx-post="{% url 'move_candidate' %}" hx-trigger="end" hx-target="this">
+            {% for app in applications|filter_by_stage:stage_code %}
+            <div class="admin-card p-3 mb-2 bg-slate-800 border-slate-700 shadow-sm" draggable="true">
+                <div class="small fw-bold text-white">{{ app.first_name }} {{ app.last_name }}</div>
+                <div class="x-small text-slate-400 mb-2">{{ app.job_post.title }}</div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <a href="{{ app.resume.url }}" target="_blank" class="text-primary x-small text-decoration-none">
+                        <i class="bi bi-file-earmark-pdf"></i> Resume
+                    </a>
+                    <button class="btn btn-xs btn-slate-700 text-slate-300"
+                            hx-get="{% url 'application_detail' app.id %}"
+                            hx-target="#modal-content"
+                            data-bs-toggle="modal" data-bs-target="#modal-container">
+                        Review
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>

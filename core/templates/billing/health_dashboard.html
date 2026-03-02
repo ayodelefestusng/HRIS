@@ -1,0 +1,69 @@
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="admin-card p-3 bg-slate-900 text-center border-slate-800">
+            <div class="text-slate-500 x-small uppercase mb-1">Total Tenants</div>
+            <h2 class="text-white fw-bold">{{ total_tenants }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card p-3 bg-slate-900 text-center border-slate-800">
+            <div class="text-slate-500 x-small uppercase mb-1">Global Headcount</div>
+            <h2 class="text-info fw-bold">{{ active_employees }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card p-3 bg-slate-900 text-center border-slate-800">
+            <div class="text-slate-500 x-small uppercase mb-1">System Status</div>
+            <h2 class="text-success fw-bold">Healthy</h2>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="admin-card p-4 bg-slate-900 border-slate-800">
+            <h6 class="text-white fw-bold mb-4">Global Audit Logs</h6>
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-dark table-hover x-small">
+                    <thead class="text-slate-500 uppercase">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Tenant</th>
+                            <th>Module</th>
+                            <th>Action</th>
+                            <th>User</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                        <tr>
+                            <td class="text-slate-400">{{ log.created_at|date:"H:i:s" }}</td>
+                            <td><span class="badge bg-slate-800">{{ log.tenant.code }}</span></td>
+                            <td class="text-info">{{ log.module }}</td>
+                            <td class="text-white">{{ log.action }}</td>
+                            <td>{{ log.user.username }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="admin-card p-4 bg-slate-900 border-slate-800">
+            <h6 class="text-white fw-bold mb-4">Tenant Pulse</h6>
+            {% for t in tenant_stats %}
+            <div class="mb-3 p-2 bg-slate-800 rounded">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-white small">{{ t.name }}</span>
+                    <span class="x-small text-slate-500">{{ t.emp_count }} Users</span>
+                </div>
+                <div class="x-small text-slate-400">
+                    Last Activity: {{ t.last_login|timesince }} ago
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

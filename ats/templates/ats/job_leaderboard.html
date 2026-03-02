@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold">{{ job.role.job_title.name }}</h2>
+            <span class="text-muted">Top 10 Ranked Applicants based on DMC Weighted Criteria</span>
+        </div>
+        <div class="text-end">
+            <button class="btn btn-outline-primary"><i class="bi bi-download"></i> Export Talent Report</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Rank</th>
+                        <th>Candidate</th>
+                        <th>Experience Score</th>
+                        <th>Skill Match</th>
+                        <th>Min. Exp</th>
+                        <th class="text-center">Total Score</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in leaderboard %}
+                    <tr>
+                        <td class="ps-4">
+                            {% if forloop.counter == 1 %}<span class="badge bg-warning text-dark"><i class="bi bi-trophy-fill"></i> 1st</span>
+                            {% elif forloop.counter == 2 %}<span class="badge bg-light text-dark border">2nd</span>
+                            {% else %}<span class="text-muted fw-bold">#{{ forloop.counter }}</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm me-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    {{ item.candidate.full_name|slice:":1" }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">{{ item.candidate.full_name }}</div>
+                                    <small class="text-muted">{{ item.candidate.email }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="small fw-bold">{{ item.score_data.experience_points|floatformat:0 }} pts</div>
+                            <div class="progress" style="height: 4px; width: 100px;">
+                                <div class="progress-bar bg-info" style="width: 75%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge {% if item.skill_match_pct > 80 %}bg-success{% else %}bg-primary{% endif %}">
+                                {{ item.skill_match_pct }}% Match
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.meets_min_exp %}
+                                <i class="bi bi-check-circle-fill text-success"></i> <small>Met</small>
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger"></i> <small>Short</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <h5 class="mb-0 fw-bold text-primary">{{ item.score|floatformat:1 }}</h5>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                <a href="{% url 'ats:candidate_profile' item.candidate.pk %}" class="btn btn-sm btn-dark">
+                                    View Profile
+                                </a>
+                                <button class="btn btn-sm btn-primary"
+                                        hx-get="{% url 'ats:get_schedule_modal' item.application.id %}"
+                                        hx-target="#scheduleModalContent"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#scheduleModal">
+                                    <i class="bi bi-calendar-event"></i> Schedule
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">No applicants have been scored for this role yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg" id="scheduleModalContent">
+            <div class="p-5 text-center">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Loading candidate details...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

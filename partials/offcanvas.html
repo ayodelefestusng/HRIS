@@ -1,0 +1,23 @@
+<div class="offcanvas offcanvas-end" tabindex="-1" id="operationsMenu" aria-labelledby="operationsMenuLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="operationsMenuLabel">Operations</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="list-group">
+            {% if user.is_dealer %}
+                <li class="list-group-item">
+                    <a href="{% url 'buyrite:dashboard' %}" class="text-decoration-none">Dealer Dashboard</a>
+                </li>
+                <li class="list-group-item">
+                    <a href="{% url 'buyrite:upload_vehicle' %}" class="text-decoration-none">Upload Vehicle</a>
+                </li>
+            {% endif %}  
+            {% if user.is_superuser %}
+                <li class="list-group-item">
+                    <a href="{% url 'buyrite:operations' %}" class="text-decoration-none">Admin Tools</a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+</div>

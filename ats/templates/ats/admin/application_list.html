@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Applications{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Applications</h1>
+  </div>
+  <table class="table table-sm">
+    <thead>
+      <tr><th>Candidate</th><th>Job</th><th>Status</th><th>AI Notes</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for a in applications %}
+      <tr>
+        <td>{{ a.candidate.full_name }}</td>
+        <td>{{ a.job_posting.title }}</td>
+        <td>{{ a.status }}</td>
+        <td>{{ a.ai_comments|truncatechars:80 }}</td>
+        <td class="text-end"><a href="{% url 'ats:admin_application_edit' a.pk %}" class="btn btn-sm btn-outline-primary">Edit</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No applications.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

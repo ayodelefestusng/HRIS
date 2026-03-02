@@ -1,0 +1,51 @@
+<div class="admin-card p-4 bg-slate-900 border-slate-800">
+    <h5 class="text-white fw-bold mb-4">Offboarding & Clearance</h5>
+    
+    <div class="table-responsive">
+        <table class="table table-dark table-hover border-slate-800">
+            <thead class="x-small uppercase text-slate-500">
+                <tr>
+                    <th>Employee</th>
+                    <th>Last Day</th>
+                    <th>IT Clearance</th>
+                    <th>Finance</th>
+                    <th>HR Exit</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exit in active_exits %}
+                <tr>
+                    <td class="text-white">
+                        {{ exit.employee.full_name }}
+                        <div class="x-small text-slate-500">{{ exit.get_exit_type_display }}</div>
+                    </td>
+                    <td class="small">{{ exit.last_working_day }}</td>
+                    
+                    <td>
+                        <button class="btn btn-xs {% if exit.it_cleared %}btn-success{% else %}btn-outline-slate-600{% endif %}"
+                                hx-post="{% url 'toggle_clearance' exit.id 'it' %}" hx-swap="outerHTML">
+                            {% if exit.it_cleared %}Cleared{% else %}Pending{% endif %}
+                        </button>
+                    </td>
+
+                    <td>
+                        <button class="btn btn-xs {% if exit.finance_cleared %}btn-success{% else %}btn-outline-slate-600{% endif %}"
+                                hx-post="{% url 'toggle_clearance' exit.id 'finance' %}" hx-swap="outerHTML">
+                            {% if exit.finance_cleared %}Cleared{% else %}Pending{% endif %}
+                        </button>
+                    </td>
+
+                    <td>
+                        <a href="{% url 'exit_interview' exit.id %}" class="btn btn-xs btn-outline-primary">Interview</a>
+                    </td>
+
+                    <td>
+                        <span class="badge bg-slate-800">{{ exit.get_status_display }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

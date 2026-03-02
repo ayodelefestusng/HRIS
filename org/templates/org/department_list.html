@@ -1,0 +1,53 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>Departments</h5>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Head of Dept</th>
+                  <th>Employees</th>
+                  <th>Location</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for dept in departments %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ dept.name }}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ dept.head_of_unit.full_name|default:"Vacant" }}</td>
+                  <td>
+                    <span class="badge bg-secondary">{{ dept.emp_count }}</span>
+                  </td>
+                  <td>{{ dept.location.name|default:"-" }}</td>
+                  <td>
+                    <a
+                      href="{% url 'org:department_detail' dept.pk %}"
+                      class="btn btn-sm btn-outline-info"
+                      >View</a
+                    >
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

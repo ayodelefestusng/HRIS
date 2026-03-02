@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: 'Helvetica', sans-serif; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #444; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: #f2f2f2; font-size: 10pt; border: 1px solid #ddd; padding: 8px; }
+        td { font-size: 9pt; border: 1px solid #ddd; padding: 6px; }
+        .status-normal { color: green; }
+        .status-late { color: red; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>{{ tenant.name }} - Attendance Report</h2>
+        <p>Generated on: {{ generated_at|date:"D, d M Y H:i" }}</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Employee</th>
+                <th>Date</th>
+                <th>In</th>
+                <th>Out</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rec in records %}
+            <tr>
+                <td>{{ rec.employee.employee_id }}</td>
+                <td>{{ rec.employee.full_name }}</td>
+                <td>{{ rec.date }}</td>
+                <td>{{ rec.clock_in|default:"--" }}</td>
+                <td>{{ rec.clock_out|default:"--" }}</td>
+                <td>{{ rec.get_status_display }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

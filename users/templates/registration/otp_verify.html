@@ -1,0 +1,59 @@
+<!-- myproject/myapp/templates/change_password.html -->
+ 
+
+
+
+
+<!-- myproject/myapp/templates/password_reset.html -->
+{% extends "base.html" %}
+
+
+
+{% block content %}
+
+
+
+<div class="container-fluid">
+    <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-md-5 col-lg-4">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h6 class="mt-3 mb-2"> {{ email }}</h6>
+                      
+                    </div>
+  <form method="POST" action="{% url 'users:verify_mfa' %}" class="d-inline-block me-2">
+        {% csrf_token %}
+        <input type="text" id="otp_code" name="otp_code" 
+               class="form-control mb-2" maxlength="6"
+               placeholder="Enter your OTP code" required>
+        <input type="hidden" name="user_id" value="{{ user_id }}">
+        <input type="hidden" name="email" value="{{ email }}">
+          <div class="d-flex justify-content-center mb-3">
+  <button  class="btn btn-primary btn-sm py-1 px-2" type="submit">Verify</button>
+</div>
+    </form>
+
+    <form method="POST" action="{% url 'users:reset_qr' %}" class="d-inline-block">
+        {% csrf_token %}
+        <input type="hidden" name="email" value="{{ email }}">
+        <button class="btn btn-secondary" type="submit">Reset QR</button>
+        
+    </form>
+                                
+  
+                                </form>
+                    
+                  
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+
+
+

@@ -1,0 +1,9 @@
+<td class="p-1">
+    <div class="heatmap-cell rounded-1" 
+         style="height: 24px; width: 100%; cursor: pointer; background-color: {{ color_code }};"
+         hx-get="{% url 'attendance_drawer' employee.id day_date %}"
+         hx-target="#offcanvas-body"
+         data-bs-toggle="offcanvas" 
+         data-bs-target="#attendanceDrawer">
+    </div>
+</td>

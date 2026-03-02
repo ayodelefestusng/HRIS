@@ -1,0 +1,61 @@
+/* Centralized Branding Variables */
+:root {
+    /* These will be overridden by inline styles in base.html */
+    --brand-primary: #4f46e5;
+    --brand-primary-rgb: 79, 70, 229;
+    --brand-secondary: #6366f1;
+    --brand-font: 'Inter', sans-serif;
+}
+
+body {
+    font-family: var(--brand-font);
+}
+
+/* Primary Color Utilities */
+.btn-primary {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.btn-primary:hover {
+    filter: brightness(0.9);
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.btn-outline-primary {
+    color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--brand-primary) !important;
+}
+
+.badge-primary {
+    background-color: var(--brand-primary);
+}
+
+/* Custom Soft Badges */
+.badge-soft-primary {
+    background-color: rgba(var(--brand-primary-rgb), 0.1);
+    color: var(--brand-primary);
+}
+
+/* Global Navigation & Layout */
+.navbar-brand img {
+    max-height: 40px;
+}
+
+footer {
+    border-top: 1px solid rgba(var(--brand-primary-rgb), 0.1);
+}

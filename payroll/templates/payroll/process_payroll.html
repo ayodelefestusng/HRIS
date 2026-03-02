@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header pb-0 d-flex justify-content-between">
+                    <h6>Process Payroll</h6>
+                </div>
+                <div class="card-body px-0 pt-0 pb-2">
+                    <div class="table-responsive p-0">
+                        <table class="table align-items-center mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Period Name</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in periods %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex px-2 py-1">
+                                            <div class="d-flex flex-column justify-content-center">
+                                                <h6 class="mb-0 text-sm">{{ period.name }}</h6>
+                                                <p class="text-xs text-secondary mb-0">{{ period.start_date }} - {{ period.end_date }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-sm bg-gradient-{{ period.status|yesno:'success,secondary,warning' }}">
+                                            {{ period.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        {% if period.status == 'OPN' or period.status == 'PND' %}
+                                        <button class="btn btn-sm btn-primary" 
+                                                hx-post="{% url 'payroll:run_payroll' period.pk %}"
+                                                hx-swap="outerHTML">
+                                            Run Calculation
+                                        </button>
+                                        {% else %}
+                                        <span class="text-xs font-weight-bold">Locked</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

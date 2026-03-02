@@ -1,0 +1,26 @@
+<style>
+    .payslip-header { text-align: center; border-bottom: 2px solid #000; }
+    .table-box { width: 100%; border: 1px solid #ccc; margin-top: 20px; }
+    .col-title { background: #f2f2f2; font-weight: bold; }
+</style>
+
+<div class="payslip-header">
+    <h1>PAYSLIP: {{ entry.period.name }}</h1>
+    <p>{{ entry.employee.get_full_name }} | Grade: {{ entry.employee.grade }}</p>
+</div>
+
+<table class="table-box">
+    <tr>
+        <td class="col-title">Earnings</td>
+        <td class="col-title">Amount</td>
+        <td class="col-title">Deductions</td>
+        <td class="col-title">Amount</td>
+    </tr>
+    <tr>
+        <td>Base Salary</td>
+        <td>{{ entry.base_salary }}</td>
+        <td>Total Taxes</td>
+        <td>{{ entry.deduction_items.all.sum_amounts }}</td> </tr>
+    </table>
+
+<h3>NET SALARY: {{ entry.net_salary }}</h3>

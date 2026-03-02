@@ -1,0 +1,6 @@
+{% if task.rejection_reason %}
+<div class="alert alert-danger x-small p-2 mt-2 mb-0 border-0">
+    <i class="bi bi-exclamation-circle-fill me-1"></i> 
+    <strong>Required Fix:</strong> {{ task.rejection_reason }}
+</div>
+{% endif %}

@@ -1,0 +1,45 @@
+{% for plan in plans %}
+<tr>
+    <td>
+        <div class="d-flex align-items-center">
+            <div class="avatar-sm bg-slate-700 rounded-circle me-3 d-flex align-items-center justify-content-center fw-bold">
+                {{ plan.application.candidate.first_name|first }}{{ plan.application.candidate.last_name|first }}
+            </div>
+            <div>
+                <div class="fw-bold">{{ plan.application.candidate.full_name }}</div>
+                <div class="small text-slate-500">Start: {{ plan.start_date|date:"d M Y" }}</div>
+            </div>
+        </div>
+    </td>
+    <td><span class="text-slate-400">{{ plan.application.job.department.name }}</span></td>
+    <td>
+        <div class="d-flex align-items-center">
+            <div class="progress w-100 bg-slate-700 me-2" style="height: 6px;">
+                <div class="progress-bar {% if plan.status == 'leave_application' %}bg-info{% else %}bg-primary{% endif %}" 
+                     style="width: {{ plan.progress }}%"></div>
+            </div>
+            <span class="small">{{ plan.progress|floatformat:0 }}%</span>
+        </div>
+    </td>
+    <td>
+        {% if plan.status == "leave_application" %}
+            <span class="status-pill bg-info bg-opacity-10 text-info border border-info border-opacity-25">Orientation</span>
+        {% elif plan.status == "IN_PROGRESS" %}
+            <span class="status-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Onboarding</span>
+        {% endif %}
+    </td>
+    <td>
+        <span class="text-warning small">
+            <i class="bi bi-file-earmark-text me-1"></i> {{ plan.tasks.filter(is_completed=True, verified=False).count }} Pending Review
+        </span>
+    </td>
+    <td class="text-end">
+        <button hx-get="{% url 'admin_verify_details' plan.id %}" 
+                hx-target="#modal-content" 
+                data-bs-toggle="modal" data-bs-target="#modal-container"
+                class="btn btn-sm btn-slate-700 text-white border-slate-600">
+            Verify Docs
+        </button>
+    </td>
+</tr>
+{% endfor %}

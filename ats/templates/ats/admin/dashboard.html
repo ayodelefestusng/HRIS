@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ATS Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">ATS Operations Admin Tool</h1>
+        <button class="btn btn-outline-secondary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Overview Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase">Total Candidates</h6>
+                    <h3 class="mb-0">{{ candidate_count }}</h3>
+                </div>
+                <a href="{% url 'ats:admin_candidate_list' %}" class="card-footer bg-transparent border-top text-white text-decoration-none">
+                    Manage <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase">Applications</h6>
+                    <h3 class="mb-0">{{ application_count }}</h3>
+                </div>
+                <a href="{% url 'ats:admin_application_list' %}" class="card-footer bg-transparent border-top text-white text-decoration-none">
+                    Review <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase">Work Experience</h6>
+                    <h3 class="mb-0">{{ work_exp_count }}</h3>
+                </div>
+                <a href="{% url 'ats:admin_work_experience_list' %}" class="card-footer bg-transparent border-top text-white text-decoration-none">
+                    Manage <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning text-dark">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase">Education</h6>
+                    <h3 class="mb-0">{{ education_count }}</h3>
+                </div>
+                <a href="{% url 'ats:admin_education_list' %}" class="card-footer bg-transparent border-top text-dark text-decoration-none">
+                    Manage <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Operations Grid -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0">Candidate Management</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>View All Candidates</span>
+                            <a href="{% url 'ats:admin_candidate_list' %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-list"></i> View
+                            </a>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Add New Candidate</span>
+                            <a href="{% url 'ats:admin_candidate_create' %}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle"></i> Create
+                            </a>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Manage Skill Profiles</span>
+                            <a href="{% url 'ats:admin_skill_profile_list' %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-list"></i> View
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0">Application Management</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Review Applications</span>
+                            <a href="{% url 'ats:admin_application_list' %}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-list"></i> View
+                            </a>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>View Work Experience</span>
+                            <a href="{% url 'ats:admin_work_experience_list' %}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-list"></i> View
+                            </a>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>View Education Records</span>
+                            <a href="{% url 'ats:admin_education_list' %}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-list"></i> View
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom">
+            <h5 class="mb-0">Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-auto">
+                    <a href="{% url 'ats:admin_candidate_create' %}" class="btn btn-primary">
+                        <i class="bi bi-person-plus"></i> Add Candidate
+                    </a>
+                </div>
+                <div class="col-md-auto">
+                    <a href="{% url 'ats:admin_work_experience_create' %}" class="btn btn-info">
+                        <i class="bi bi-briefcase"></i> Add Experience
+                    </a>
+                </div>
+                <div class="col-md-auto">
+                    <a href="{% url 'ats:admin_education_create' %}" class="btn btn-warning">
+                        <i class="bi bi-book"></i> Add Education
+                    </a>
+                </div>
+                <div class="col-md-auto">
+                    <a href="{% url 'ats:admin_skill_profile_create' %}" class="btn btn-secondary">
+                        <i class="bi bi-star"></i> Add Skill Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-info-circle"></i>
+        <strong>Tip:</strong> Use this admin tool to manage candidate profiles, applications, and their associated data.
+        All operations are logged for audit purposes.
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .card-footer {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}

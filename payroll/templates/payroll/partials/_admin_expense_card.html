@@ -1,0 +1,28 @@
+<div class="admin-card p-3 mb-3 border-0 shadow-sm transition-hover" id="expense-{{ expense.id }}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex align-items-center">
+            <div class="p-2 bg-slate-900 rounded me-3 text-primary">
+                <i class="bi bi-file-earmark-medical fs-5"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0 text-white">{{ request.tenant.currency_symbol }}{{ expense.amount }}</h6>
+                <div class="small text-slate-400">{{ expense.employee.full_name }} • {{ expense.description }}</div>
+            </div>
+        </div>
+        
+        <div class="btn-group shadow-sm">
+            <button class="btn btn-xs btn-slate-700 text-white border-slate-600" 
+                    hx-get="{% url 'view_receipt' expense.id %}" 
+                    hx-target="#modal-content"
+                    data-bs-toggle="modal" data-bs-target="#modal-container">
+                <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-xs btn-success" 
+                    hx-post="{% url 'approve_expense' expense.id 'APPROVE' %}" 
+                    hx-target="#expense-{{ expense.id }}" 
+                    hx-swap="outerHTML">
+                <i class="bi bi-check-lg"></i>
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,40 @@
+<!-- templates/partials/demo_form.html -->
+<!-- Quick Demo Form for HTMX -->
+<form method="post" 
+      hx-post="{% url 'demo_booking_partial' %}" 
+      hx-target="#demo-form-result"
+      hx-swap="innerHTML"
+      class="quick-demo-form">
+    {% csrf_token %}
+    
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">First Name *</label>
+            {{ form.first_name }}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Last Name *</label>
+            {{ form.last_name }}
+        </div>
+        <div class="col-12">
+            <label class="form-label">Work Email *</label>
+            {{ form.email }}
+        </div>
+        <div class="col-12">
+            <label class="form-label">Company *</label>
+            {{ form.company }}
+        </div>
+        <div class="col-12">
+            <label class="form-label">Job Title *</label>
+            {{ form.job_title }}
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-paper-plane me-2"></i>
+                Request Quick Demo
+            </button>
+        </div>
+    </div>
+</form>
+
+<div id="demo-form-result"></div>

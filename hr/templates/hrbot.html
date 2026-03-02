@@ -1,0 +1,323 @@
+{% extends 'base1.html' %}
+
+{% block title %}Chat{% endblock %}
+
+{% block extra_css %}
+<style>
+    #chat-container {
+        height: 60vh;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #f9f9f9;
+    }
+    .user-message {
+        background-color: #e3f2fd;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        max-width: 70%;
+        margin-left: auto;
+    }
+    .bot-message {
+        background-color: #f1f1f1;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        max-width: 70%;
+    }
+    #message-input {
+        border-radius: 20px 0 0 20px;
+        padding: 10px 15px;
+        flex-grow: 1;
+    }
+    #send-btn {
+        border-radius: 0 20px 20px 0;
+        padding: 10px 20px;
+    }
+    .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+    }
+    .file-input-button {
+        border: 1px solid #ccc;
+        border-radius: 20px 0 0 20px;
+        padding: 10px 15px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    .file-input {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    .input-group {
+        display: flex;
+    }
+    .file-info {
+        font-size: 12px;
+        margin-top: 5px;
+        color: #666;
+    }
+    .attachment-icon {
+        margin-right: 5px;
+    }
+    /* Loading spinner */
+    .spinner-border {
+        vertical-align: text-top;
+    }
+
+    /* Message text formatting */
+    .message-text {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    /* Alert positioning */
+    .alert {
+        margin-top: 1rem;
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+.bot-message h1, .bot-message h2, .bot-message h3 {
+    font-size: 1.1rem;
+    margin-top: .75rem;
+    margin-bottom: .5rem;
+    color: #333;
+}
+.bot-message ul, .bot-message ol {
+    margin-left: 1.25rem;
+    margin-bottom: .75rem;
+}
+.bot-message li {
+    margin-bottom: .4rem;
+}
+.bot-message strong {
+    color: #222;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="text-center mb-4">Dignity Concept Service BOT</h2>
+        
+        <div id="chat-container">
+            {% for message in messages %}
+              <div class="{% if message.is_user %}user-message{% else %}bot-message{% endif %}">
+    <div class="message-text">
+        {{ message.text|safe }}
+    </div>
+    {% if message.attachment %}
+        <div class="mt-2">
+            <a href="{{ message.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-paperclip"></i> View Attachment
+            </a>
+        </div>
+    {% endif %}
+    <div class="text-end small text-muted">{{ message.timestamp|timesince }} ago</div>
+</div>
+            {% endfor %}
+        </div>
+        
+        <form id="chat-form" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="input-group mb-3">
+                <div class="file-input-wrapper">
+                    <button type="button" class="file-input-button">
+                        <i class="fas fa-paperclip attachment-icon"></i>
+                    </button>
+                    {# CHANGED: Set accept attribute to only allow image/png and image/jpeg #}
+                    <input type="file" id="file-input" class="file-input" name="attachment" accept="image/png, image/jpeg">
+                </div>
+                <input type="text" id="message-input" class="form-control" placeholder="Type your message..." autofocus>
+                <button type="submit" class="btn btn-primary" id="send-btn">Send</button>
+            </div>
+            <div id="file-info" class="file-info"></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const chatContainer = document.getElementById('chat-container');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const fileInput = document.getElementById('file-input');
+    const fileInfo = document.getElementById('file-info');
+    const chatForm = document.getElementById('chat-form');
+
+    // Scroll to bottom initially
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    scrollToBottom();
+
+    // Handle file selection - ONLY ALLOW JPG & PNG
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/png'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Only JPG and PNG images are allowed.');
+                this.value = '';
+                fileInfo.textContent = '';
+                return;
+            }
+
+            // Validate file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) { // 5 MB
+                alert('Image size must be less than 5MB.');
+                this.value = '';
+                fileInfo.textContent = '';
+                return;
+            }
+
+            // Show image preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                fileInfo.innerHTML = `
+                    <div class="image-preview-container">
+                        <img src="${e.target.result}" alt="Preview" class="img-thumbnail" style="max-height: 100px;">
+                        <div class="image-info">
+                            ${file.name} (${(file.size/1024).toFixed(1)}KB)
+                            <button class="btn btn-sm btn-link text-danger" onclick="clearAttachment()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            fileInfo.textContent = '';
+        }
+    });
+
+    // Handle form submission
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await sendMessage();
+    });
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        const file = fileInput.files[0];
+
+        if (!message && !file) {
+            alert('Please enter a message or attach an image.');
+            return;
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+
+        try {
+            // Create FormData for file upload
+            const formData = new FormData();
+            if (message) formData.append('message', message);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            if (file) formData.append('attachment', file);
+
+            addMessageToChat(message, file, true);
+
+            // Clear inputs
+            messageInput.value = '';
+            fileInput.value = '';
+            fileInfo.textContent = '';
+
+            // Send to server
+            const response = await fetch('{% url "hr:send_message" %}', {  
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                addMessageToChat(data.response, null, false);
+            } else {
+                alert(data.response || 'Error processing message.');
+                if (message || file) addMessageToChat(message, file, true);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to send message. Please try again.');
+            if (message || file) addMessageToChat(message, file, true);
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send';
+            messageInput.focus();
+        }
+    }
+
+    function addMessageToChat(message, file, isUser) {
+        if (!message && !file) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = isUser ? 'user-message' : 'bot-message';
+
+        let content = '';
+        if (message) {
+            content += `<div class="message-text">${message}</div>`;
+        }
+        if (file && isUser) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                content += `
+                    <div class="mt-2">
+                        <img src="${e.target.result}" alt="Uploaded image" class="img-thumbnail" style="max-height: 200px;">
+                        <div class="small mt-1"><i class="fas fa-image"></i> ${file.name}</div>
+                    </div>
+                `;
+                messageDiv.innerHTML = content + `<div class="text-end small text-muted">${new Date().toLocaleTimeString()}</div>`;
+                chatContainer.appendChild(messageDiv);
+                scrollToBottom();
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
+
+        content += `<div class="text-end small text-muted">${new Date().toLocaleTimeString()}</div>`;
+        messageDiv.innerHTML = content;
+        chatContainer.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    window.clearAttachment = function() {
+        fileInput.value = '';
+        fileInfo.textContent = '';
+    };
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+});
+</script>
+{% endblock %}

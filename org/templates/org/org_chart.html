@@ -1,0 +1,76 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between">
+          <h5>Organizational Chart</h5>
+          <a href="{% url 'org:create_unit' %}" class="btn btn-sm btn-primary"
+            >Add Unit</a
+          >
+        </div>
+        <div class="card-body">
+          <div class="tree-structure">
+            <ul>
+              {% for root in roots %}
+              <li>
+                <div
+                  class="node border rounded p-3 mb-2 d-inline-block bg-gray-100"
+                >
+                  <span class="font-weight-bold">{{ root.name }}</span><br />
+                  <span class="text-xs text-muted"
+                    >{{ root.get_unit_type_display }}</span
+                  ><br />
+                  {% if root.head_of_unit %}
+                  <small class="text-primary"
+                    ><i class="ni ni-single-02"></i> {{
+                    root.head_of_unit.full_name }}</small
+                  >
+                  {% endif %}
+                  <div class="mt-2">
+                    <a
+                      href="{% url 'org:update_unit' root.pk %}"
+                      class="text-xs"
+                      >Edit</a
+                    >
+                  </div>
+                </div>
+                {% if root.children.exists %}
+                <ul>
+                  {% for child in root.children.all %}
+                  <li>
+                    <div class="node border rounded p-3 mb-2 d-inline-block">
+                      <span class="font-weight-bold">{{ child.name }}</span>
+                    </div>
+                    <!-- Recursion ideally in a separate include, minimizing depth here for simplicity -->
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Simple CSS Tree for Org Chart stub */
+  .tree-structure ul {
+    padding-left: 20px;
+    list-style-type: none;
+  }
+  .tree-structure li {
+    margin-top: 10px;
+    border-left: 1px solid #ccc;
+    padding-left: 10px;
+  }
+  .node {
+    min-width: 150px;
+    text-align: center;
+  }
+</style>
+{% endblock %}

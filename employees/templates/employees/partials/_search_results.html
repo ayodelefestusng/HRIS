@@ -1,0 +1,44 @@
+{% if employees or candidates or exited %}
+<div class="list-group bg-slate-900 border border-slate-700 rounded-3 overflow-hidden">
+    
+    {% if employees %}
+    <div class="list-group-item bg-slate-800 border-slate-700 x-small fw-bold text-slate-500 uppercase py-2">Current Employees</div>
+    {% for emp in employees %}
+    <a href="{% url 'employee_detail' emp.id %}" class="list-group-item list-group-item-action bg-slate-900 text-white border-slate-800 py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-bold small">{{ emp.full_name }}</span>
+                <div class="x-small text-slate-500">{{ emp.job_role.name }}</div>
+            </div>
+            <span class="badge bg-primary-subtle text-primary x-small">{{ emp.get_status_display }}</span>
+        </div>
+    </a>
+    {% endfor %}
+    {% endif %}
+
+    {% if candidates %}
+    <div class="list-group-item bg-slate-800 border-slate-700 x-small fw-bold text-slate-500 uppercase py-2">ATS Candidates</div>
+    {% for can in candidates %}
+    <a href="{% url 'candidate_detail' can.id %}" class="list-group-item list-group-item-action bg-slate-900 text-white border-slate-800 py-3">
+        <div class="fw-bold small">{{ can.full_name }}</div>
+        <div class="x-small text-slate-500">{{ can.email }}</div>
+    </a>
+    {% endfor %}
+    {% endif %}
+
+    {% if exited %}
+    <div class="list-group-item bg-slate-800 border-slate-700 x-small fw-bold text-slate-500 uppercase py-2">Exited / Alumni</div>
+    {% for ex in exited %}
+    <a href="{% url 'employee_detail' ex.id %}" class="list-group-item list-group-item-action bg-slate-900 text-white border-slate-800 py-3 opacity-75">
+        <div class="fw-bold small text-slate-300">{{ ex.full_name }}</div>
+        <div class="x-small text-danger">Exited: {{ ex.exit_process.last_working_day }}</div>
+    </a>
+    {% endfor %}
+    {% endif %}
+
+</div>
+{% elif query %}
+<div class="p-4 bg-slate-900 border border-slate-700 rounded-3 text-center">
+    <p class="small text-slate-500 mb-0">No results found for "{{ query }}"</p>
+</div>
+{% endif %}

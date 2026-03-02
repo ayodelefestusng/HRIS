@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Org Chart</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+
+      #orgchart-container {
+        padding: 16px;
+      }
+
+      #orgchart {
+        width: 100%;
+        height: 700px;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+      }
+    </style>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        google.charts.load("current", { packages: ["orgchart"] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+          fetch("{{ api_url }}", { credentials: "include" })
+            .then((response) => response.json())
+            .then((data) => {
+              var chartData = new google.visualization.DataTable();
+              chartData.addColumn("string", "Name");
+              chartData.addColumn("string", "Manager");
+              chartData.addColumn("string", "ToolTip");
+
+              var rows = [];
+
+              data.forEach(function (item) {
+                var name = item.name;
+                var manager = item.manager || "";
+                var title = item.title || "";
+
+                var nameWithTitle =
+                  name +
+                  '<div style="color: #666; font-size: 11px; margin-top: 2px;">' +
+                  title +
+                  "</div>";
+
+                rows.push([
+                  { v: name, f: nameWithTitle },
+                  manager || "",
+                  title,
+                ]);
+              });
+
+              chartData.addRows(rows);
+
+              var chart = new google.visualization.OrgChart(
+                document.getElementById("orgchart")
+              );
+
+              chart.draw(chartData, {
+                allowHtml: true,
+                size: "large",
+              });
+            })
+            .catch(function (err) {
+              console.error("Error loading org chart data", err);
+            });
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="orgchart-container">
+      <h2>Organization Chart</h2>
+      <div id="orgchart"></div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+ {% load static %} 
+ {% block title %}HR Dashboard |
+MyCompany{% endblock %} 
+{% block extra_css %}
+<style>
+  /* Gradient Background for Header */
+  .dashboard-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    padding-bottom: 4rem;
+    margin-bottom: -3rem;
+  }
+
+  .stat-card {
+    border: none;
+    border-radius: 1rem;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+    overflow: hidden;
+  }
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .module-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    height: 100%;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    background: white;
+  }
+  .module-card:hover {
+    border-color: #4f46e5;
+    background-color: #f8fafc;
+    transform: translateY(-3px);
+  }
+  .module-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %} 
+{% block content %}
+<!-- Welcome Header -->
+<div class="dashboard-header rounded-3 p-4 mb-5">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-end">
+      <div>
+        <h6
+          class="text-uppercase tracking-wide text-primary-light mb-1 opacity-75"
+        >
+          Overview
+        </h6>
+        <h1 class="display-5 fw-bold mb-0">
+          Welcome back, {{ user.first_name }}! 👋
+        </h1>
+        <p class="mt-2 opacity-75 lead">
+          Here's what's happening in your organization today.
+        </p>
+      </div>
+      <div class="d-none d-md-block">
+        <span class="badge bg-white/20 p-2 text-white">
+          <i class="bi bi-calendar3 me-2"></i> {% now "l, F jS, Y" %}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid">
+  <div class="row g-4">
+    <!-- LEFT COLUMN: Main Content & Modules -->
+    <div class="col-lg-8">
+      <!-- Quick Stats Row -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-3 col-sm-6">
+          <div class="card stat-card shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+              <div
+                class="icon icon-shape bg-primary text-white rounded-circle p-3 me-3"
+              >
+                <i class="bi bi-people-fill"></i>
+              </div>
+              <div>
+                <p class="text-xs mb-0 text-muted fw-bold">Active Employees</p>
+                <h4 class="mb-0 fw-bold">
+                  {{ stats.employees_count|default:"--" }}
+                </h4>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="card stat-card shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+              <div
+                class="icon icon-shape bg-success text-white rounded-circle p-3 me-3"
+              >
+                <i class="bi bi-check-circle-fill"></i>
+              </div>
+              <div>
+                <p class="text-xs mb-0 text-muted fw-bold">Present Today</p>
+                <h4 class="mb-0 fw-bold">
+                  {{ stats.attendance_today|default:"--" }}
+                </h4>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="card stat-card shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+              <div
+                class="icon icon-shape bg-warning text-white rounded-circle p-3 me-3"
+              >
+                <i class="bi bi-clock-history"></i>
+              </div>
+              <div>
+                <p class="text-xs mb-0 text-muted fw-bold">Pending Leave</p>
+                <h4 class="mb-0 fw-bold">
+                  {{ stats.pending_leaves|default:"0" }}
+                </h4>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="card stat-card shadow-sm h-100 p-3">
+            <a
+              href="{% url 'workflow:inbox' %}"
+              class="text-decoration-none text-dark"
+            >
+              <div class="d-flex align-items-center">
+                <div
+                  class="icon icon-shape bg-info text-white rounded-circle p-3 me-3"
+                >
+                  <i class="bi bi-inbox-fill"></i>
+                </div>
+                <div>
+                  <p class="text-xs mb-0 text-muted fw-bold">Workflow Inbox</p>
+                  <h4 class="mb-0 fw-bold">
+                    {{ stats.pending_workflows|default:"0" }}
+                  </h4>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modules Grid -->
+      <h5 class="fw-bold mb-3">Quick Navigation</h5>
+      <div class="row g-4">
+        <!-- Row 1 -->
+        <div class="col-md-4">
+          <a href="{% url 'employees:employee_list' %}" class="module-card">
+            <div class="module-icon bg-indigo-100 text-indigo-600">
+              <i class="bi bi-person-badge text-primary"></i>
+            </div>
+            <h6 class="fw-bold">Employee Directory</h6>
+            <p class="text-sm text-muted mb-0">
+              Manage profiles, documents & info.
+            </p>
+          </a>
+        </div>
+        <div class="col-md-4">
+          <a
+            href="{% url 'attendance:attendance_report' %}"
+            class="module-card"
+          >
+            <div class="module-icon bg-green-100 text-green-600">
+              <i class="bi bi-calendar-check text-success"></i>
+            </div>
+            <h6 class="fw-bold">Time & Attendance</h6>
+            <p class="text-sm text-muted mb-0">
+              Track logs, shifts, and reports.
+            </p>
+          </a>
+        </div>
+        <div class="col-md-4">
+          <a href="{% url 'leave:dashboard' %}" class="module-card">
+            <div class="module-icon bg-yellow-100 text-yellow-600">
+              <i class="bi bi-cup-hot text-warning"></i>
+            </div>
+            <h6 class="fw-bold">Leave Management</h6>
+            <p class="text-sm text-muted mb-0">
+              Apply for leave and check balances.
+            </p>
+          </a>
+        </div>
+
+        <!-- Row 2 -->
+        {% if user.is_hr_officer or user.is_hr_manager or user.is_hr_admin %}
+        <div class="col-md-4">
+          <a href="{% url 'payroll:dashboard' %}" class="module-card">
+            <div class="module-icon bg-red-100 text-red-600">
+              <i class="bi bi-wallet2 text-danger"></i>
+            </div>
+            <h6 class="fw-bold">Payroll</h6>
+            <p class="text-sm text-muted mb-0">View slips, tax & compliance.</p>
+          </a>
+        </div>
+         {% endif %}
+        <div class="col-md-4">
+          <a href="{% url 'performance:dashboard' %}" class="module-card">
+            <div class="module-icon bg-purple-100 text-purple-600">
+              <i class="bi bi-graph-up-arrow text-info"></i>
+            </div>
+            <h6 class="fw-bold">Performance</h6>
+            <p class="text-sm text-muted mb-0">Appraisals, KPIs & Reviews.</p>
+          </a>
+        </div>
+
+        {% if user.is_hr_officer or user.is_hr_manager or user.is_hr_admin %}
+        <div class="col-md-4">
+          <a href="{% url 'ats:manage_candidate' %}" class="module-card">
+            <div class="module-icon bg-pink-100 text-pink-600">
+              <i class="bi bi-briefcase text-secondary"></i>
+            </div>
+            <h6 class="fw-bold">Recruitment (ATS)</h6>
+            <p class="text-sm text-muted mb-0">
+              Manage candidates and job posts.
+            </p>
+          </a>
+        </div>
+        {% endif %}
+
+      
+        
+        {% if user.is_manager or user.is_hr_officer or user.is_hr_manager or user.is_hr_admin %} 
+        <div class="col-md-4">
+          <a href="{% url 'org:dashboard' %}" class="module-card">
+            <div class="module-icon bg-blue-100 text-blue-600">
+              <i class="bi bi-diagram-3 text-dark"></i>
+            </div>
+            <h6 class="fw-bold">Organization</h6>
+            <p class="text-sm text-muted mb-0">Depts, Roles & Org structure.</p>
+          </a>
+        </div>
+        {% endif %}
+        
+        <div class="col-md-4">
+          <a href="{% url 'development:my_learning' %}" class="module-card">
+            <div class="module-icon bg-teal-100 text-teal-600">
+              <i class="bi bi-mortarboard text-success"></i>
+            </div>
+            <h6 class="fw-bold">Learning & Dev</h6>
+            <p class="text-sm text-muted mb-0">
+              Courses, training & upskilling.
+            </p>
+          </a>
+        </div>
+        {% if user.is_hr_officer or user.is_hr_manager or user.is_hr_admin %}
+        <div class="col-md-4">
+          <a href="{% url 'analytics:dashboard' %}" class="module-card">
+            <div class="module-icon bg-orange-100 text-orange-600">
+              <i class="bi bi-bar-chart-line text-primary"></i>
+            </div>
+            <h6 class="fw-bold">Analytics</h6>
+            <p class="text-sm text-muted mb-0">Insights & Executive reports.</p>
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: AI Assistant & Notifications -->
+    <div class="col-lg-4">
+      <!-- HR Assistant Chat -->
+      {% include 'partials/chat_interface.html' %}
+    </div>
+  </div>
+</div>
+{% endblock %}

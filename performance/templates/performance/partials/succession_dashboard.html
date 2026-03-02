@@ -1,0 +1,43 @@
+<div class="admin-card p-4 bg-slate-900 border-0">
+    <h5 class="text-white fw-bold mb-4">Talent Calibration (9-Box Grid)</h5>
+    
+    <div class="nine-box-grid">
+        <div class="grid-label-y text-slate-500 x-small fw-bold">POTENTIAL</div>
+        
+        <div class="box box-yellow" title="Inconsistent Player">{% for p in matrix.1.3 %}{{ p.employee.initials }}{% endfor %}</div>
+        <div class="box box-green" title="High Professional">{% for p in matrix.2.3 %}{{ p.employee.initials }}{% endfor %}</div>
+        <div class="box box-star" title="Star / Future Leader">{% for p in matrix.3.3 %}{{ p.employee.initials }}{% endfor %}</div>
+
+        <div class="box box-red" title="Dilemma">{% for p in matrix.1.2 %}{{ p.employee.initials }}{% endfor %}</div>
+        <div class="box box-yellow" title="Core Player">{% for p in matrix.2.2 %}{{ p.employee.initials }}{% endfor %}</div>
+        <div class="box box-green" title="High Performer">{% for p in matrix.3.2 %}{{ p.employee.initials }}{% endfor %}</div>
+
+        <div class="box box-red" title="Under Performer">{% for p in matrix.1.1 %}{{ p.employee.initials }}{% endfor %}</div>
+        <div class="box box-red" title="Effective Employee">{% for p in matrix.2.1 %}{{ p.employee.initials }}{% endfor %}</div>
+        <div class="box box-yellow" title="Trusted Professional">{% for p in matrix.3.1 %}{{ p.employee.initials }}{% endfor %}</div>
+    </div>
+    
+    <div class="text-center mt-3 text-slate-500 x-small fw-bold">PERFORMANCE</div>
+</div>
+
+<style>
+    .nine-box-grid {
+        display: grid;
+        grid-template-columns: 40px repeat(3, 1fr);
+        grid-template-rows: repeat(3, 120px);
+        gap: 10px;
+    }
+    .box {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    .box-star { border: 2px solid #3b82f6; background: rgba(59, 130, 246, 0.1); }
+    .box-green { border-color: #10b981; }
+    .box-yellow { border-color: #f59e0b; }
+    .box-red { border-color: #ef4444; }
+</style>

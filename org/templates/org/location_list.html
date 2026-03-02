@@ -1,0 +1,37 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>Locations</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Location Name</th>
+                  <th>Address</th>
+                  <th>Country</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for loc in locations %}
+                <tr>
+                  <td>
+                    <h6 class="mb-0 text-sm">{{ loc.name }}</h6>
+                  </td>
+                  <td>{{ loc.address }}</td>
+                  <td>{{ loc.country.name }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+<div class="card shadow-sm border-success">
+    <div class="card-header bg-success text-white d-flex justify-content-between">
+        <h5 class="my-1">Current Job Assignment & Compensation</h5>
+        
+        <button class="btn btn-light btn-sm"
+                hx-post="{% url 'employees:job_assignment_create' employee_pk=employee.pk %}"
+                hx-target="#job-comp-section-container" 
+                hx-swap="outerHTML">
+            New Job/Promotion
+        </button>
+    </div>
+    <div class="card-body">
+        {% if current_job %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Job Title:</strong> {{ current_job.job_title.name }}</p>
+                    <p><strong>Department:</strong> {{ current_job.department.name }}</p>
+                    <p><strong>Manager:</strong> {{ current_job.manager.first_name }} {{ current_job.manager.last_name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Status:</strong> {{ current_job.get_employment_status_display }}</p>
+                    <p><strong>Start Date:</strong> {{ current_job.start_date|date:"Y-m-d" }}</p>
+                    {% if latest_comp %}
+                        <p><strong>Salary:</strong> {{ latest_comp.currency }} {{ latest_comp.salary_amount }} (Effective: {{ latest_comp.effective_date|date:"Y-m-d" }})</p>
+                    {% else %}
+                        <p><strong>Salary:</strong> N/A</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% else %}
+            <p class="text-danger">No active job assignment found.</p>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Onboarding Dashboard</h2>
+            <div class="card mb-4">
+                <div class="card-header pb-0">
+                    <h6>Active Onboarding Plans</h6>
+                </div>
+                <div class="card-body px-0 pt-0 pb-2">
+                    <div class="table-responsive p-0">
+                        <table class="table align-items-center mb-0">
+                            <thead>
+                                <tr>
+                                    <th>New Hire</th>
+                                    <th>Role</th>
+                                    <th>Start Date</th>
+                                    <th>Progress</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plan in plans %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex px-2 py-1">
+                                            <div class="d-flex flex-column justify-content-center">
+                                                <h6 class="mb-0 text-sm">{{ plan.application.candidate.full_name }}</h6>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">{{ plan.application.job_posting.title }}</p>
+                                    </td>
+                                    <td>
+                                        <span class="text-secondary text-xs font-weight-bold">{{ plan.start_date }}</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <span class="me-2 text-xs font-weight-bold">{{ plan.progress }}%</span>
+                                            <div>
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-gradient-info" role="progressbar" aria-valuenow="{{ plan.progress }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ plan.progress }}%;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle text-center text-sm">
+                                        <span class="badge badge-sm bg-gradient-{{ plan.status|yesno:'success,info,secondary' }}">
+                                            {{ plan.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <a href="{% url 'onboarding:task_list' plan.pk %}" class="text-secondary font-weight-bold text-xs">
+                                            Manage Tasks
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

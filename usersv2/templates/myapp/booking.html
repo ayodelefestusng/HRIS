@@ -1,0 +1,341 @@
+<!-- templates/demo/booking.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Book a Demo - Dignity Concept Limited{% endblock %}
+
+{% block meta_description %}
+Schedule a personalized demo with our experts to see how Dignity Concept can transform your business with AI and data analytics.
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Progress Indicator -->
+            <div class="progress-indicator mb-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="step active">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Your Details</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Schedule</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Confirmation</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Main Form -->
+                <div class="col-lg-8">
+                    <div class="booking-card card border-0 shadow-sm">
+                        <div class="card-header bg-primary text-white py-4">
+                            <h2 class="h4 mb-0">
+                                <i class="fas fa-calendar-check me-2"></i>
+                                Schedule Your Personalized Demo
+                            </h2>
+                            <p class="mb-0 opacity-75">Let us show you how we can transform your business</p>
+                        </div>
+                        <div class="card-body p-4">
+                            <form method="post" id="demoBookingForm" novalidate>
+                                {% csrf_token %}
+                                
+                                <!-- Personal Information -->
+                                <div class="form-section mb-5">
+                                    <h4 class="mb-4 text-primary">
+                                        <i class="fas fa-user me-2"></i>Your Information
+                                    </h4>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                                First Name *
+                                            </label>
+                                            {{ form.first_name }}
+                                            {% if form.first_name.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.first_name.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                                Last Name *
+                                            </label>
+                                            {{ form.last_name }}
+                                            {% if form.last_name.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.last_name.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                                Work Email *
+                                            </label>
+                                            {{ form.email }}
+                                            {% if form.email.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.email.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.phone.id_for_label }}" class="form-label">
+                                                Phone Number
+                                            </label>
+                                            {{ form.phone }}
+                                            {% if form.phone.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.phone.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.company.id_for_label }}" class="form-label">
+                                                Company *
+                                            </label>
+                                            {{ form.company }}
+                                            {% if form.company.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.company.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ form.job_title.id_for_label }}" class="form-label">
+                                                Job Title *
+                                            </label>
+                                            {{ form.job_title }}
+                                            {% if form.job_title.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.job_title.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="{{ form.industry.id_for_label }}" class="form-label">
+                                            Industry *
+                                        </label>
+                                        {{ form.industry }}
+                                        {% if form.industry.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.industry.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Areas of Interest -->
+                                <div class="form-section mb-5">
+                                    <h4 class="mb-4 text-primary">
+                                        <i class="fas fa-star me-2"></i>Areas of Interest
+                                    </h4>
+                                    <p class="text-muted mb-3">What would you like to see in your demo? (Select at least one)</p>
+                                    
+                                    <div class="interest-areas">
+                                        {% for category in solution_categories %}
+                                        <div class="category-group mb-4">
+                                            <h6 class="fw-bold mb-3">{{ category.name }}</h6>
+                                            <div class="row">
+                                                {% for solution in category.solution_set.all %}
+                                                <div class="col-md-6 mb-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" 
+                                                               type="checkbox" 
+                                                               name="interest_areas" 
+                                                               value="{{ solution.id }}" 
+                                                               id="solution_{{ solution.id }}">
+                                                        <label class="form-check-label" for="solution_{{ solution.id }}">
+                                                            {{ solution.title }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% if form.interest_areas.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.interest_areas.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Scheduling -->
+                                <div class="form-section mb-5">
+                                    <h4 class="mb-4 text-primary">
+                                        <i class="fas fa-clock me-2"></i>Scheduling
+                                    </h4>
+                                    <div class="mb-3">
+                                        <label for="{{ form.preferred_date.id_for_label }}" class="form-label">
+                                            Preferred Date & Time *
+                                        </label>
+                                        {{ form.preferred_date }}
+                                        <div class="form-text">{{ form.preferred_date.help_text }}</div>
+                                        {% if form.preferred_date.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.preferred_date.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="{{ form.message.id_for_label }}" class="form-label">
+                                            Additional Information
+                                        </label>
+                                        {{ form.message }}
+                                        <div class="form-text">{{ form.message.help_text }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- Privacy and Communications -->
+                                <div class="form-section mb-4">
+                                    <div class="form-check mb-3">
+                                        {{ form.privacy_policy }}
+                                        <label class="form-check-label" for="{{ form.privacy_policy.id_for_label }}">
+                                            I agree to the <a href="{% url 'privacy_policy' %}" target="_blank">Privacy Policy</a> 
+                                            and consent to Dignity Concept contacting me about this demo request. *
+                                        </label>
+                                        {% if form.privacy_policy.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.privacy_policy.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="form-check">
+                                        {{ form.newsletter_subscription }}
+                                        <label class="form-check-label" for="{{ form.newsletter_subscription.id_for_label }}">
+                                            {{ form.newsletter_subscription.label }}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-paper-plane me-2"></i>
+                                        Schedule Your Demo
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <div class="sticky-top" style="top: 100px;">
+                        <!-- Benefits Card -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary">
+                                    <i class="fas fa-gift me-2"></i>What to Expect
+                                </h5>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Personalized 45-minute session
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Live platform demonstration
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Industry-specific use cases
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Q&A with our experts
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Customized solution proposal
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Contact Info -->
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Need immediate assistance?</h6>
+                                <p class="card-text small">
+                                    <i class="fas fa-envelope me-2"></i>
+                                    <a href="mailto:demos@dignityconcept.com">demos@dignityconcept.com</a>
+                                </p>
+                                <p class="card-text small">
+                                    <i class="fas fa-phone me-2"></i>
+                                    <a href="tel:+234123456789">+234 123 456 789</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('demoBookingForm');
+    
+    // Real-time validation
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        form.classList.add('was-validated');
+    });
+
+    // Dynamic date/time validation
+    const dateInput = document.getElementById('{{ form.preferred_date.id_for_label }}');
+    if (dateInput) {
+        dateInput.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const now = new Date();
+            
+            if (selectedDate < now) {
+                this.setCustomValidity('Please select a future date and time');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+    // Character counter for message
+    const messageInput = document.getElementById('{{ form.message.id_for_label }}');
+    if (messageInput) {
+        const counter = document.createElement('div');
+        counter.className = 'form-text text-end';
+        messageInput.parentNode.appendChild(counter);
+        
+        messageInput.addEventListener('input', function() {
+            const remaining = 1000 - this.value.length;
+            counter.textContent = `${remaining} characters remaining`;
+        });
+    }
+});
+</script>
+{% endblock %}

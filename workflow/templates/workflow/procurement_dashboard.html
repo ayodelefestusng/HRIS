@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+    .icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .bg-soft-primary { background-color: rgba(96, 165, 250, 0.1); color: #60a5fa; }
+    .bg-soft-success { background-color: rgba(52, 211, 153, 0.1); color: #34d399; }
+    .bg-soft-warning { background-color: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+    .bg-soft-info { background-color: rgba(129, 140, 248, 0.1); color: #818cf8; }
+
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .rating-star { color: #fbbf24; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 animate__animated animate__fadeIn">
+    <div class="col-md-8">
+        <h3 class="fw-bold">Procurement & Asset Management</h3>
+        <p class="text-muted">Lifecycle tracking for vendors, strategic assets, and procurement compliance.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <button class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-plus-circle me-2"></i>New Request
+        </button>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="icon-box bg-soft-primary">
+                <i class="bi bi-shop"></i>
+            </div>
+            <h6 class="text-muted small text-uppercase fw-bold">Active Vendors</h6>
+            <h3 class="fw-bold mb-0">{{ vendors.count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="icon-box bg-soft-success">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <h6 class="text-muted small text-uppercase fw-bold">Total Assets</h6>
+            <h3 class="fw-bold mb-0">{{ assets.count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="icon-box bg-soft-info">
+                <i class="bi bi-currency-dollar"></i>
+            </div>
+            <h6 class="text-muted small text-uppercase fw-bold">Asset Value</h6>
+            <h3 class="fw-bold mb-0">${{ total_asset_value|floatformat:2 }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="icon-box bg-soft-warning">
+                <i class="bi bi-file-earmark-text"></i>
+            </div>
+            <h6 class="text-muted small text-uppercase fw-bold">Pending Requests</h6>
+            <h3 class="fw-bold mb-0">{{ requests.count }}</h3>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <!-- Vendors -->
+    <div class="col-lg-7">
+        <div class="table-container shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold mb-0">Strategic Vendors</h5>
+                <a href="#" class="text-primary small text-decoration-none">View All <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="border-0 small text-uppercase">Vendor Name</th>
+                            <th class="border-0 small text-uppercase">Payment Terms</th>
+                            <th class="border-0 small text-uppercase">Rating</th>
+                            <th class="border-0 small text-uppercase">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vendor in vendors %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ vendor.name }}</div>
+                                <div class="text-muted small">{{ vendor.contact_email }}</div>
+                            </td>
+                            <td><span class="badge bg-light text-dark font-monospace">{{ vendor.payment_terms }}</span></td>
+                            <td>
+                                <span class="fw-bold me-1">{{ vendor.rating }}</span>
+                                <i class="bi bi-star-fill rating-star"></i>
+                            </td>
+                            <td>
+                                {% if vendor.is_active %}
+                                <span class="badge bg-success-soft text-success rounded-pill px-3">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger-soft text-danger rounded-pill px-3">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">No vendors found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rapid Asset List -->
+    <div class="col-lg-5">
+        <div class="table-container shadow-sm h-100">
+            <h5 class="fw-bold mb-4">High-Value Assets</h5>
+            <div class="list-group list-group-flush">
+                {% for asset in assets %}
+                <div class="list-group-item px-0 py-3 border-0 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1">{{ asset.name }}</h6>
+                            <p class="text-muted small mb-0">{{ asset.get_asset_class_display }}</p>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-primary">${{ asset.current_book_value|floatformat:2 }}</div>
+                            <div class="text-muted small">Book Value</div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4 text-muted">No assets registered.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Procurement Requests -->
+<div class="row">
+    <div class="col-12">
+        <div class="table-container shadow-sm">
+            <h5 class="fw-bold mb-4">Ongoing Procurement Requests</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="border-0 small text-uppercase">Subject</th>
+                            <th class="border-0 small text-uppercase">Vendor</th>
+                            <th class="border-0 small text-uppercase">Total Amount</th>
+                            <th class="border-0 small text-uppercase">Status</th>
+                            <th class="border-0 small text-uppercase">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                        <tr>
+                            <td class="fw-bold">{{ req.subject }}</td>
+                            <td>{{ req.vendor.name }}</td>
+                            <td>
+                                <div class="fw-bold">${{ req.amount_total }}</div>
+                                <div class="text-xs text-muted">Incl. VAT/WHT</div>
+                            </td>
+                            <td>
+                                <span class="badge {% if req.status == 'approved' %}bg-success{% else %}bg-warning text-dark{% endif %} rounded-pill px-3">
+                                    {{ req.status|capfirst }}
+                                </span>
+                            </td>
+                            <td class="text-muted small">{{ req.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No procurement requests.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

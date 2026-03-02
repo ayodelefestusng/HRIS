@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Attendance Reports</h2>
+        </div>
+
+
+        <form method="GET" class="d-flex">
+                <input type="text" name="q" class="form-control form-control-sm me-2" placeholder="Search name/ID..." value="{{ request.GET.q }}">
+                <button class="btn btn-sm btn-outline-primary mb-0">Search</button>
+            </form>
+    </div>
+    
+
+<div class="row mb-4">
+        <div class="col-lg-4">
+            <div class="card bg-gradient-primary">
+                <div class="card-body p-3">
+                    <h6 class="text-white">Smart Clock</h6>
+                    <p class="text-white text-xs">Current Time: <span id="current-time"></span></p>
+                    <form action="{% url 'attendance:smart_clock' %}" method="POST">
+                        {% csrf_token %}
+                        {% if is_clocked_in %}
+                            <button type="submit" class="btn btn-white text-primary w-100">Clock Out</button>
+                        {% else %}
+                            <button type="submit" class="btn btn-dark w-100">Clock In</button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <p class="text-sm mb-0 text-capitalize font-weight-bold">My Present (This Month)</p>
+                        <h5 class="font-weight-bolder mb-0">{{ my_stats.present }}</h5>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <p class="text-sm mb-0 text-capitalize font-weight-bold">My Late Arrivals</p>
+                        <h5 class="font-weight-bolder mb-0 text-danger">{{ my_stats.late }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+{% if request.user.is_manager or request.user.is_hr_officer %}
+    <div class="row mb-4">
+        <div class="col-12"><h6 class="mb-3">Attendance Snippet (Today)</h6></div>
+        <div class="col-md-4"><div class="card p-3 border-start border-success border-4">Present Today: {{ snippet.present }}</div></div>
+        <div class="col-md-4"><div class="card p-3 border-start border-danger border-4">Absent Today: {{ snippet.absent }}</div></div>
+        <div class="col-md-4"><div class="card p-3 border-start border-warning border-4">Late Arrivals: {{ snippet.late }}</div></div>
+    </div>
+    {% endif %}
+
+
+
+
+    <div class="row mt-4">
+        <!-- Present Card -->
+        <div class="col-xl-4 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <div class="row">
+                        <div class="col-8">
+                            <div class="numbers">
+                                <p class="text-sm mb-0 text-capitalize font-weight-bold">Present Today</p>
+                                <h5 class="font-weight-bolder mb-0">{{ today_stats.present }}</h5>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="icon icon-shape bg-gradient-success shadow text-center border-radius-md">
+                                <i class="ni ni-check-bold text-lg opacity-10" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Absent Card -->
+        <div class="col-xl-4 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <div class="row">
+                        <div class="col-8">
+                            <div class="numbers">
+                                <p class="text-sm mb-0 text-capitalize font-weight-bold">Absent Today</p>
+                                <h5 class="font-weight-bolder mb-0">{{ today_stats.absent }}</h5>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="icon icon-shape bg-gradient-danger shadow text-center border-radius-md">
+                                <i class="ni ni-fat-remove text-lg opacity-10" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Late Card -->
+        <div class="col-xl-4 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <div class="row">
+                        <div class="col-8">
+                            <div class="numbers">
+                                <p class="text-sm mb-0 text-capitalize font-weight-bold">Late Arrivals</p>
+                                <h5 class="font-weight-bolder mb-0">{{ today_stats.late }}</h5>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="icon icon-shape bg-gradient-warning shadow text-center border-radius-md">
+                                <i class="ni ni-time-alarm text-lg opacity-10" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+
+
+
+    <div class="card">
+        <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+            <h6>Attendance Reports</h6>
+            <form method="GET" class="d-flex">
+                <input type="text" name="q" class="form-control form-control-sm me-2" placeholder="Search name/ID..." value="{{ request.GET.q }}">
+                <button class="btn btn-sm btn-outline-primary mb-0">Search</button>
+            </form>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-xxs font-weight-bolder opacity-7">S/N</th>
+                        <th class="text-xxs font-weight-bolder opacity-7">
+                            <a href="?sort={% if request.GET.sort == 'employee__first_name' %}-employee__first_name{% else %}employee__first_name{% endif %}">Employee <i class="fas fa-sort"></i></a>
+                        </th>
+                        <th class="text-xxs font-weight-bolder opacity-7">
+                            <a href="?sort={% if request.GET.sort == 'date' %}-date{% else %}date{% endif %}">Date <i class="fas fa-sort"></i></a>
+                        </th>
+                        <th class="text-xxs font-weight-bolder opacity-7">Clock In</th>
+                        <th class="text-xxs font-weight-bolder opacity-7">Clock Out</th>
+                        <th class="text-xxs font-weight-bolder opacity-7">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in records %}
+                    <tr>
+                        <td class="text-xs px-4">{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
+   <td>{{ rec.employee.full_name }} <br><small>{{ rec.employee.employee_id }}</small></td>
+            <td>{{ rec.date }}</td>
+            <td>{{ rec.clock_in|time:"H:i" }} - {{ rec.clock_out|time:"H:i"|default:"--" }}</td>
+
+                        {% comment %} <td class="text-xs px-4 font-weight-bold">{{ rec.employee.full_name }}</td> {% endcomment %}
+                        {% comment %} <td class="text-xs px-4">{{ rec.date }}</td> {% endcomment %}
+                        {% comment %} <td class="text-xs px-4 text-success">{{ rec.clock_in|default:"--" }}</td> {% endcomment %}
+                        {% comment %} <td class="text-xs px-4 text-danger">{{ rec.clock_out|default:"--" }}</td> {% endcomment %}
+                        <td class="text-xs px-4">
+                            {% if rec.total_hours >= 8 and not rec.is_late %}<span class="badge bg-success">Normal</span>
+                            {% elif rec.is_late %}<span class="badge bg-danger">Late Resumption</span>
+                            {% elif rec.total_hours < 8 %}<span class="badge bg-warning text-dark">Early Closure</span>
+                            {% else %}<span class="badge bg-gradient-secondary">Absent</span>{% endif %}
+                        </td>
+                        <td>
+                {% if rec.is_approval_required %}
+                    <span class="text-xs">{{ rec.approval_status }}</span>
+                {% else %}
+                    <i class="ni ni-check-bold text-success"></i> <small>Auto</small>
+                {% endif %}
+            </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+    <table class="table align-items-center">
+    <thead>
+        <tr>
+            <th>Employee</th>
+            <th>Date</th>
+            <th>Clock In/Out</th>
+            <th>Status</th>
+            <th>Approval</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rec in records %}
+        <tr>
+            <td>{{ rec.employee.full_name }} <br><small>{{ rec.employee.employee_id }}</small></td>
+            <td>{{ rec.date }}</td>
+            <td>{{ rec.clock_in|time:"H:i" }} - {{ rec.clock_out|time:"H:i"|default:"--" }}</td>
+            <td>
+                {% if rec.total_hours >= 8 and not rec.is_late %}
+                    <span class="badge bg-success">Normal</span>
+                {% elif rec.is_late %}
+                    <span class="badge bg-danger">Late Resumption</span>
+                {% elif rec.total_hours < 8 and rec.clock_out %}
+                    <span class="badge bg-warning text-dark">Early Closure</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ rec.get_status_display }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if rec.is_approval_required %}
+                    <span class="text-xs">{{ rec.approval_status }}</span>
+                {% else %}
+                    <i class="ni ni-check-bold text-success"></i> <small>Auto</small>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script>
+    // Real-time clock for the dashboard
+    setInterval(() => {
+        document.getElementById('current-time').innerText = new Date().toLocaleTimeString();
+    }, 1000);
+</script>
+
+ {% if is_paginated %}
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <span class="text-xs text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+              <nav aria-label="Table navigation">
+                <ul class="pagination pagination-sm mb-0">
+                  {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Previous</a></li>
+                  {% endif %}
+                  {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Next</a></li>
+                  {% endif %}
+                </ul>
+              </nav>
+            </div>
+            {% endif %}
+
+
+
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+             <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Quick Links</h6>
+                    <div class="list-group">
+                        <a href="{% url 'attendance:absenteeism_report' %}" class="list-group-item list-group-item-action">
+                             Absenteeism Report
+                        </a>
+                        <a href="{% url 'attendance:tardiness_report' %}" class="list-group-item list-group-item-action">
+                             Tardiness Report (Late Arrivals)
+                        </a>
+                         <a href="{% url 'attendance:biometric_integration' %}" class="list-group-item list-group-item-action">
+                             Biometric Device Settings
+                        </a>
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

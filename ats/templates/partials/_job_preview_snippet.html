@@ -1,0 +1,23 @@
+<div class="job-post-preview p-3">
+    <h2 class="text-primary">{{ job.role.job_title.name|default:"Job Title Preview" }}</h2>
+    
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge bg-light text-dark border"><i class="bi bi-briefcase"></i> {{ job.get_employment_type_display }}</span>
+        {% for loc in preview_locations %}
+            <span class="badge bg-info-soft text-primary"><i class="bi bi-geo-alt"></i> {{ loc.name }}</span>
+        {% endfor %}
+        <span class="badge bg-warning-soft text-danger"><i class="bi bi-calendar"></i> Closes: {{ job.closing_date }}</span>
+    </div>
+
+    <hr>
+
+    <h5>About the Role</h5>
+    <div class="description-text mb-4">
+        {{ job.description|linebreaks }}
+    </div>
+
+    <h5>Requirements</h5>
+    <div class="requirements-text">
+        {{ job.requirements|linebreaks }}
+    </div>
+</div>

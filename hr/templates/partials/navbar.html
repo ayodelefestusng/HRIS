@@ -1,0 +1,51 @@
+{% load static %}
+{% load custom_filters %}
+
+<nav class="navbar navbar-expand-sm navbar-dark bg-white sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'buyrite:home' %}">
+            <img src="{% static 'images/buyrite.png' %}" alt="BuyRite" width="100" height="30" class="rounded shadow-sm me-2">
+            <span style="color: #FF6A00; font-weight: bold;">Platform</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav ms-auto">
+                {% if user.is_authenticated and not user.is_dealer %}
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="{% url 'buyrite:dealer_registration' %}">Become a Dealer</a>
+                    </li>
+                {% endif %}
+
+                {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="nav-link text-dark">Welcome, {{ user.full_name|first_name }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark btn btn-warning" href="{% url 'buyrite:check_vin' %}">Check Result</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark btn btn-warning" href="#">VIN Lookup</a>
+                    </li>
+                    {% if user.is_dealer or user.is_superuser %}
+                        <li class="nav-item">
+                            <button class="btn btn-outline-dark" type="button" data-bs-toggle="offcanvas" data-bs-target="#operationsMenu">
+                                Operations
+                            </button>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link text-dark btn btn-warning" href="{% url 'users:logout' %}">Logout</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="{% url 'users:login' %}">Login</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

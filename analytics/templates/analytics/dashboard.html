@@ -1,0 +1,152 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Summary Cards -->
+    <div class="col-xl-3 col-sm-6 mb-4">
+      <div class="card">
+        <div class="card-body p-3">
+          <div class="row">
+            <div class="col-8">
+              <div class="numbers">
+                <p class="text-sm mb-0 text-capitalize font-weight-bold">
+                  Total Employees
+                </p>
+                <h5 class="font-weight-bolder mb-0">{{ total_employees }}</h5>
+              </div>
+            </div>
+            <div class="col-4 text-end">
+              <i class="ni ni-single-02 text-lg text-primary"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-sm-6 mb-4">
+      <div class="card">
+        <div class="card-body p-3">
+          <a
+            href="{% url 'analytics:turnover_analytics' %}"
+            class="text-decoration-none text-dark"
+          >
+            <div class="row">
+              <div class="col-8">
+                <div class="numbers">
+                  <p class="text-sm mb-0 text-capitalize font-weight-bold">
+                    Turnover Analysis
+                  </p>
+                  <span class="text-xs text-primary">View Report &rarr;</span>
+                </div>
+              </div>
+              <div class="col-4 text-end">
+                <i class="ni ni-bold-right text-lg text-danger"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-sm-6 mb-4">
+      <div class="card">
+        <div class="card-body p-3">
+          <a
+            href="{% url 'analytics:recruitment_analytics' %}"
+            class="text-decoration-none text-dark"
+          >
+            <div class="row">
+              <div class="col-8">
+                <div class="numbers">
+                  <p class="text-sm mb-0 text-capitalize font-weight-bold">
+                    Recruitment Pipeline
+                  </p>
+                  <span class="text-xs text-success">View Funnel &rarr;</span>
+                </div>
+              </div>
+              <div class="col-4 text-end">
+                <i class="ni ni-zoom-split-in text-lg text-success"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dept Breakdown -->
+  <div class="row mt-4">
+    <div class="col-lg-7 mb-lg-0 mb-4">
+      <div class="card z-index-2">
+        <div class="card-header pb-0">
+          <h6>Headcount by Department</h6>
+        </div>
+        <div class="card-body p-3">
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Count</th>
+                  <th>Bar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for dept in departments %}
+                <tr>
+                  <td>{{ dept.department__name|default:"Unassigned" }}</td>
+                  <td>{{ dept.count }}</td>
+                  <td class="w-50">
+                    <div class="progress">
+                      <div
+                        class="progress-bar bg-gradient-info"
+                        style="width:{{ dept.count }}0%"
+                      ></div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshots Log -->
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-header pb-0 d-flex justify-content-between">
+          <h6>History</h6>
+          <form method="post" action="{% url 'analytics:generate_snapshot' %}">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-dark">
+              Capture Snapshot
+            </button>
+          </form>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group">
+            {% for snap in recent_snapshots %}
+            <li
+              class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg"
+            >
+              <div class="d-flex align-items-center">
+                <div class="d-flex flex-column">
+                  <h6 class="mb-1 text-dark text-sm">
+                    {{ snap.get_report_type_display }}
+                  </h6>
+                  <span class="text-xs">{{ snap.captured_at }}</span>
+                </div>
+              </div>
+              <a
+                href="{% url 'analytics:report_detail' snap.pk %}"
+                class="btn btn-link text-dark text-sm mb-0 px-0 ms-4"
+                >View</a
+              >
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

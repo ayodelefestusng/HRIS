@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% if object %}Update{% else %}Create{% endif %} Org Unit</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ object.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Parent Unit</label>
+                            <select name="parent" class="form-control">
+                                <option value="">-- Root Level --</option>
+                                {% for unit in view.model.objects.all %}
+                                    <option value="{{ unit.pk }}" {% if object.parent == unit %}selected{% endif %}>{{ unit.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                             <label class="form-label">Unit Type</label>
+                             <select name="unit_type" class="form-control">
+                                 <option value="DEPT">Department</option>
+                                 <option value="TEAM">Team</option>
+                                 <option value="REGION">Region</option>
+                             </select>
+                        </div>
+                        <div class="mb-3">
+                             <label class="form-label">Head of Unit</label>
+                             <input type="text" placeholder="Employee Search Stub" class="form-control">
+                             <!-- In real app, use a searchable select/autocomplete -->
+                        </div>
+                        
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Save Unit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

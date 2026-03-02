@@ -1,0 +1,55 @@
+<div class="container mt-5">
+    <h4 class="text-white fw-bold mb-4">Welcome aboard, {{ request.user.employee.first_name }}!</h4>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="admin-card p-4 bg-slate-900 border-slate-800">
+                <h6 class="text-white mb-3">Onboarding Checklist</h6>
+                <div class="progress mb-4 bg-slate-800" style="height: 10px;">
+                    <div class="progress-bar bg-success" style="width: {{ plan.progress }}%"></div>
+                </div>
+
+                <div class="list-group list-group-flush">
+                    {% for task in plan.tasks.all %}
+                    <div class="list-group-item bg-transparent border-slate-800 py-3 px-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="{% if task.is_completed %}text-decoration-line-through text-slate-500{% else %}text-white{% endif %}">
+                                    {{ task.title }}
+                                </span>
+                                <div class="x-small text-slate-500">Due: {{ task.due_date }}</div>
+                            </div>
+
+                            {% if not task.is_completed %}
+                                {% if task.requirement.req_type == 'DOCUMENT' %}
+                                <form hx-post="{% url 'upload_onboarding_doc' task.id %}" hx-encoding="multipart/form-data" hx-target="this">
+                                    <input type="file" name="uploaded_file" class="d-none" id="file-{{ task.id }}" onchange="this.form.requestSubmit()">
+                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="document.getElementById('file-{{ task.id }}').click()">
+                                        Upload
+                                    </button>
+                                </form>
+                                {% elif task.requirement.req_type == 'ACKNOWLEDGEMENT' %}
+                                <button class="btn btn-xs btn-success" hx-post="{% url 'sign_onboarding_task' task.id %}">
+                                    Sign Policy
+                                </button>
+                                {% endif %}
+                            {% else %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="admin-card p-4 bg-slate-900 text-center">
+                <img src="{{ plan.mentor.avatar.url|default:'/static/default-avatar.png' }}" class="rounded-circle mb-3" width="80">
+                <h6 class="text-white mb-1">Your Mentor</h6>
+                <p class="small text-primary">{{ plan.mentor.full_name }}</p>
+                <button class="btn btn-sm btn-slate-800 text-slate-300 w-100">Send Message</button>
+            </div>
+        </div>
+    </div>
+</div>

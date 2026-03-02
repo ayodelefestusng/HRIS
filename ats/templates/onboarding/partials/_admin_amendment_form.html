@@ -1,0 +1,23 @@
+<div id="task-action-{{ task.id }}" class="animate-fade-in">
+    <label class="text-slate-400 small fw-bold mb-2 uppercase">Reason for Amendment</label>
+    <form hx-post="{% url 'admin_action' task.id 'REJECT' %}" 
+          hx-target="#modal-content">
+        <textarea name="reason" 
+                  class="form-control bg-slate-900 border-slate-700 text-white mb-3" 
+                  rows="3" 
+                  placeholder="e.g. The passport photo is blurry, please re-upload a clear scan." 
+                  required></textarea>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger btn-sm w-100">
+                Confirm & Send to Employee
+            </button>
+            <button type="button" 
+                    hx-get="{% url 'admin_verify_details' plan.id %}" 
+                    hx-target="#modal-content"
+                    class="btn btn-outline-slate-500 btn-sm">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>

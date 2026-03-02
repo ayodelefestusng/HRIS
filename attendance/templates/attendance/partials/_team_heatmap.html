@@ -1,0 +1,44 @@
+<div class="admin-card p-4 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i>Team Attendance Pattern</h5>
+        <div class="d-flex gap-3 small align-items-center">
+            <span class="d-flex align-items-center"><span class="bg-success rounded-circle me-1" style="width:10px; height:10px;"></span> Present</span>
+            <span class="d-flex align-items-center"><span class="bg-warning rounded-circle me-1" style="width:10px; height:10px;"></span> Late</span>
+            <span class="d-flex align-items-center"><span class="bg-danger rounded-circle me-1" style="width:10px; height:10px;"></span> Absent</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-borderless align-middle heatmap-table">
+            <thead>
+                <tr class="text-slate-500 x-small uppercase">
+                    <th style="min-width: 150px;">Employee</th>
+                    {% for day in days_in_month %}
+                        <th class="text-center">{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in team_members %}
+                <tr>
+                    <td class="py-2">
+                        <span class="fw-medium small">{{ employee.full_name }}</span>
+                    </td>
+                    {% for day in days_in_month %}
+                        {% with status=attendance_matrix|get_item:employee.id|get_item:day %}
+                        <td class="p-1">
+                            <div class="heatmap-cell rounded-1" 
+                                 style="height: 24px; width: 100%; cursor: pointer; 
+                                        background-color: {% if status == 'present' %}#10b981{% elif status == 'late' %}#f59e0b{% elif status == 'absent' %}#ef4444{% else %}#334155{% endif %};"
+                                 data-bs-toggle="tooltip" 
+                                 title="{{ employee.first_name }}: {{ status|title|default:'No Data' }}">
+                            </div>
+                        </td>
+                        {% endwith %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

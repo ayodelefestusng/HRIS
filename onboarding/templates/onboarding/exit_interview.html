@@ -1,0 +1,39 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5>Exit Interview</h5>
+          <p class="text-sm">Employee: {{ object.employee.full_name }}</p>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">Interview Notes</label>
+              <textarea
+                name="interview_notes"
+                class="form-control"
+                rows="10"
+                placeholder="Record feedback, reason for leaving, handover status..."
+              ></textarea>
+            </div>
+
+            <div class="alert alert-info border-0 text-white">
+              <i class="ni ni-bell-55"></i> Please ensure all company assets are
+              returned before finalizing this interview.
+            </div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">
+                Save & Complete
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

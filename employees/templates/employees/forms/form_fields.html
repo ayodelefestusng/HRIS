@@ -1,0 +1,25 @@
+{% comment %}
+Reusable form field renderer for Employee forms.
+Usage:
+    {% include "employees/forms/form_fields.html" with form=form %}
+{% endcomment %}
+
+{% for field in form %}
+    <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="{{ field.id_for_label }}" style="font-weight: 600;">
+            {{ field.label }}
+        </label>
+
+        {{ field }}
+
+        {% if field.help_text %}
+            <small class="form-text text-muted">{{ field.help_text }}</small>
+        {% endif %}
+
+        {% if field.errors %}
+            <div class="text-danger" style="margin-top: 4px;">
+                {{ field.errors }}
+            </div>
+        {% endif %}
+    </div>
+{% endfor %}

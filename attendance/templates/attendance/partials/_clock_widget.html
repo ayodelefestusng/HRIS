@@ -1,0 +1,74 @@
+<div id="clock-widget-container" class="card border-0 shadow-sm overflow-hidden animate-fade-in">
+    <div class="card-body p-4 text-center">
+        <h6 class="text-uppercase text-muted small fw-bold mb-3">Time Tracker</h6>
+        
+        <div class="display-5 fw-bold mb-1" id="live-clock">00:00:00</div>
+        <div class="text-muted small mb-4">{{ today|date:"l, d F Y" }}</div>
+
+        {% if not current_log or not current_log.check_in %}
+            <form id="attendance-form">
+                <input type="hidden" name="lat" id="id_lat">
+                <input type="hidden" name="lng" id="id_lng">
+                
+                <button type="button" 
+                        onclick="captureLocationAndSubmit()"
+                        class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm">
+                    <i class="bi bi-play-fill me-2"></i> Clock In
+                </button>
+            </form>
+        {% elif not current_log.check_out %}
+            <div class="badge bg-success-soft text-success mb-3 p-2 px-3">
+                <i class="bi bi-clock-history me-1"></i> Active: Since {{ current_log.check_in|date:"H:i" }}
+            </div>
+            
+            <form hx-post="{% url 'clock_out' %}" hx-target="#clock-widget-container">
+                <button type="submit" class="btn btn-danger btn-lg rounded-pill px-5 shadow-sm">
+                    <i class="bi bi-stop-fill me-2"></i> Clock Out
+                </button>
+            </form>
+        {% else %}
+            <div class="alert alert-light border-0 mb-0">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                Shift Completed: <strong>{{ shift_duration }}</strong>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Update Live Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toLocaleTimeString();
+        }, 1000);
+
+        // Capture GPS and trigger HTMX
+        function captureLocationAndSubmit() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Locating...';
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById('id_lat').value = position.coords.latitude;
+                        document.getElementById('id_lng').value = position.coords.longitude;
+                        
+                        // Manually trigger HTMX post now that inputs are filled
+                        htmx.ajax('POST', "{% url 'clock_in' %}", {
+                            target: '#clock-widget-container',
+                            values: {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            }
+                        });
+                    },
+                    (error) => {
+                        alert("Location access is required to clock in. Please enable GPS.");
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-play-fill me-2"></i> Clock In';
+                    }
+                );
+            }
+        }
+    </script>
+</div>

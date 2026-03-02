@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+  <title> Contact Us- Habeeb</title>
+{% endblock title %}
+
+
+
+{% block content %}
+
+    
+
+
+
+  <!-- Hero Section -->
+
+  <!-- Contact Info Section -->
+  <div class="contact-info">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 text-center">
+          <h4>Office Address</h4>
+          <p>Relucent<br>S,Ibrahim Street, Ikorodu Lagos, Nigeria</p>
+        </div>
+        <div class="col-md-4 text-center">
+          <h4>Phone</h4>
+          <p>+234-8076156698</p>
+        </div>
+        <div class="col-md-4 text-center">
+          <h4>Email</h4>
+          <p>info@relucent.com</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact Form Section -->
+
+
+  <div class="container">
+    <div class="row justify-content-center">
+          <div class="col-4">
+              <div class="contact-form ">
+                <div class="container ">
+                  <h4 class="text-center mb-4">Send Us a Message</h4>
+                  <form>
+                    <div class="mb-3">
+                      <label for="name" class="form-label">Full Name</label>
+                      <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="email" class="form-label">Email Address</label>
+                      <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="message" class="form-label">Message</label>
+                      <textarea class="form-control" id="message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                  </form>
+                </div>
+              </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+
+
+      

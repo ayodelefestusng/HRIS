@@ -1,0 +1,358 @@
+openapi: 3.0.3
+info:
+  title: HRIS API
+  version: 1.0.0
+  description: Combined API schema for HRIS modules
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+  ########################
+  # ORG APP
+  ########################
+  /api/org/locations/:
+    get:
+      summary: List all locations
+      responses:
+        "200":
+          description: List of locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+    post:
+      summary: Create a new location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationCreate"
+      responses:
+        "201":
+          description: Location created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+
+  /api/org/locations/{id}/:
+    get:
+      summary: Retrieve a location
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Location details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+    put:
+      summary: Update a location
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationCreate"
+      responses:
+        "200":
+          description: Location updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+    delete:
+      summary: Delete a location
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Location deleted
+
+  ########################
+  # EMPLOYEES APP
+  ########################
+  /api/employees/policies/{id}/acknowledge/:
+    post:
+      summary: Acknowledge a policy document
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyAcknowledgementCreate"
+      responses:
+        "201":
+          description: Policy acknowledgement recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyAcknowledgement"
+
+  ########################
+  # ATTENDANCE APP
+  ########################
+  /api/attendance/records/:
+    get:
+      summary: List attendance records
+      responses:
+        "200":
+          description: List of records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+    post:
+      summary: Create attendance record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceRecordCreate"
+      responses:
+        "201":
+          description: Record created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  /api/attendance/summary/:
+    get:
+      summary: Attendance summary by department/unit
+      responses:
+        "200":
+          description: Summary report
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/attendance/overtime-report/:
+    get:
+      summary: Overtime report by department/unit
+      responses:
+        "200":
+          description: Overtime report
+          content:
+            application/json:
+              schema:
+                type: object
+
+  ########################
+  # DEVELOPMENT APP
+  ########################
+  /api/development/courses/:
+    get:
+      summary: List courses
+      responses:
+        "200":
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+    post:
+      summary: Create course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseCreate"
+      responses:
+        "201":
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+
+  ########################
+  # DISCIPLINE APP
+  ########################
+  /api/discipline/warnings/:
+    get:
+      summary: List warnings
+      responses:
+        "200":
+          description: List of warnings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Warning"
+    post:
+      summary: Issue warning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WarningCreate"
+      responses:
+        "201":
+          description: Warning issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warning"
+
+  ########################
+  # ENGAGEMENT APP
+  ########################
+  /api/engagement/surveys/:
+    get:
+      summary: List surveys
+      responses:
+        "200":
+          description: List of surveys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Survey"
+    post:
+      summary: Create survey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SurveyCreate"
+      responses:
+        "201":
+          description: Survey created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Survey"
+
+  ########################
+  # BENEFITS APP
+  ########################
+  /api/benefits/health-insurance/:
+    get:
+      summary: List health insurance records
+      responses:
+        "200":
+          description: List of health insurance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HealthInsurance"
+    post:
+      summary: Add health insurance record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HealthInsuranceCreate"
+      responses:
+        "201":
+          description: Health insurance record created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthInsurance"
+
+components:
+  schemas:
+    Location:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        state: { type: string }
+        country: { type: string }
+        head_employee_id: { type: integer }
+    LocationCreate:
+      type: object
+      required: [name, country]
+      properties:
+        name: { type: string }
+        state: { type: string }
+        country: { type: string }
+        head_employee_id: { type: integer }
+
+    PolicyAcknowledgement:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        document_id: { type: integer }
+        acknowledged_at: { type: string, format: date-time }
+        agreed: { type: boolean }
+    PolicyAcknowledgementCreate:
+      type: object
+      required: [employee_id, document_id]
+      properties:
+        employee_id: { type: integer }
+        document_id: { type: integer }
+        agreed: { type: boolean }
+
+    AttendanceRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        date: { type: string, format: date }
+        status: { type: string, enum: [PRESENT, ABSENT, LATE, EXCUSED] }
+        clock_in: { type: string, format: time }
+        clock_out: { type: string, format: time }
+        remarks: { type: string }
+    AttendanceRecordCreate:
+      type: object
+      required: [employee_id, date, status]
+      properties:
+        employee_id: { type: integer }
+        date: { type: string, format: date }
+        status: { type: string }
+        clock_in: { type: string, format: time }
+        clock_out: { type: string, format: time }
+        remarks: { type: string }
+
+    Course:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        duration_hours: { type: integer }
+    CourseCreate:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: string }
+        description: { type

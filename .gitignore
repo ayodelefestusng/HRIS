@@ -1,0 +1,106 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.sqlite3
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.json
+*.log
+*.xlsx
+*.docx
+*.pyc
+# Django
+# *.sqlite3
+# db.sqlite3
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.pot
+*.mo
+*.log
+*.coverage
+*.env
+.env
+.env.*
+local_settings.py
+settings_local.py
+
+*.xlsx
+*.json
+*.docx
+*.doc
+
+
+# Media and static files (optional)
+# /media/
+# /staticfiles/
+# /static_root/
+# /media_root/
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Virtual environments
+venv/
+env/
+live_env/
+ENV/
+env.bak/
+venv.bak/
+
+# Migrations (optional — only if you regenerate them often)
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Node (if using frontend tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Coverage and testing
+htmlcov/
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.cache
+.pytest_cache/
+
+# IDEs
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+*.sqlite3
+*.db
+*.json
+/media/workflow/documents/*
+
+*.sqlite3
+*.db
+*.json
+/checkpoints.sqlite
+/langgraph_checkpoints.sqlite
+/media/workflow/documents/*

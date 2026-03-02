@@ -1,0 +1,57 @@
+<html><head>
+    <title>Contact Us</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+
+
+<style>
+    #divider-between-fields {
+    border-top: 1px dashed #ccc;
+    margin: 20px 0;
+}
+</style>
+
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="mb-4 text-center">Contact Us</h3>
+                        <form method="post">
+  {% csrf_token %}                       
+
+<div id="div_id_sender_name" class="mb-3"> <label for="id_sender_name" class="form-label requiredField">
+                Sender name<span class="asteriskField">*</span> </label> <input type="text" name="sender_name" maxlength="100" class="textinput form-control" required="" id="id_sender_name"> 
+</div>
+
+
+
+
+<div id="div_id_sender_phone" class="mb-3"> <label for="id_sender_phone" class="form-label requiredField">
+                Sender phone<span class="asteriskField">*</span> </label> <input type="text" name="sender_phone" maxlength="11" class="textinput form-control" required="" aria-describedby="id_sender_phone_helptext" id="id_sender_phone">
+                
+                
+                <div id="id_sender_phone_helptext" class="form-text">11 digits and  a valid phone number format
+
+                </div> 
+</div>
+                
+                
+<div id="div_id_beneficiary_name" class="mb-3"> <label for="id_beneficiary_name" class="form-label requiredField">
+                Beneficiary name<span class="asteriskField">*</span> </label> <input type="text" name="beneficiary_name" maxlength="100" class="textinput form-control" required="" id="id_beneficiary_name">
+            
+</div>
+
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('divider-between-fields').style.backgroundColor = '#f0f0f0';
+    </script>
+
+</body></html>

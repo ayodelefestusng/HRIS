@@ -1,0 +1,235 @@
+<!-- templates/partials/footer.html -->
+ {% load static %}
+<footer class="footer bg-dark text-light pt-5 pb-4">
+    <div class="container">
+        <div class="row">
+            <!-- Company Info -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="footer-about">
+                    {#  <a class="navbar-brand mb-3" href="{% url 'users:home' %}">  #}
+                        <img src="{% static 'images/ayulalogo.png' %}" 
+                             alt="Dignity Concept Limited" 
+                             height="40"
+                             class="dignity-logo">
+                    </a>
+                    <p class="mb-3">
+                        Engineering Africa's Intelligent Future through unified data, 
+                        analytics, and AI solutions that help enterprises scale with 
+                        confidence and lead their industries.
+                    </p>
+                    <div class="compliance-badges">
+                        <img src="{% static 'images/iso.jpg' %}" 
+                             alt="ISO 27001 Certified" 
+                             height="40" width="40" class="me-2">
+                        {% comment %} <img src="{% static 'images/gdpr-compliant-badge.png' %}" 
+                             alt="GDPR Compliant" 
+                             height="40"> {% endcomment %}
+                             <svg style="width: 40px; height: 40px;"
+ version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" x="0" y="0" viewBox="0 0 256 256" style="enable-background:new 0 0 256 256" xml:space="preserve"><style>.st0{fill:#382b73}.st6{fill:#fff}</style><switch><g><circle class="st0" cx="128" cy="128" r="120"/><circle cx="128" cy="128" r="102.5" style="fill:#473080"/><path class="st0" d="M167.229 132.367H88.771a8.222 8.222 0 0 0-8.222 8.222v51.188A8.223 8.223 0 0 0 88.771 200h78.457a8.222 8.222 0 0 0 8.222-8.223v-51.188a8.22 8.22 0 0 0-8.221-8.222zM106.61 132.366V77.252h42.78v55.114h14.752v-59.54c0-5.693-4.632-10.326-10.326-10.326h-51.631c-5.694 0-10.326 4.633-10.326 10.326v59.54H106.61z"/><g><path d="M167.229 193H88.771a8.223 8.223 0 0 1-8.223-8.223v-51.189a8.222 8.222 0 0 1 8.223-8.222h78.457a8.223 8.223 0 0 1 8.223 8.222v51.189a8.222 8.222 0 0 1-8.222 8.223z" style="fill:#1caee4"/><path d="M150.064 193h-44.129a6.365 6.365 0 0 1-6.365-6.365V131.73a6.365 6.365 0 0 1 6.365-6.364h44.129a6.364 6.364 0 0 1 6.364 6.364v54.905a6.364 6.364 0 0 1-6.364 6.365z" style="fill:#009add"/><path d="M164.142 125.366H149.39V70.252h-42.78v55.114H91.858v-59.54c0-5.693 4.632-10.326 10.326-10.326h51.631c5.694 0 10.326 4.633 10.326 10.326v59.54z" style="fill:#fede3a"/><path d="M156.766 125.366v-59.54a2.95 2.95 0 0 0-2.95-2.95h-51.631a2.95 2.95 0 0 0-2.95 2.95v59.54h7.376V70.252h42.78v55.114h7.375z" style="fill:#f7cb15"/><path class="st6" d="M106.133 158.023h-6.201c-.887 0-1.606.719-1.606 1.606v1.255c0 .887.719 1.606 1.606 1.606h3.111v2.201a3.662 3.662 0 0 1-.366.188c-.707.31-1.598.467-2.648.467-.786 0-1.451-.189-2.037-.577-.593-.395-1.042-.949-1.374-1.697-.361-.814-.543-1.787-.543-2.893v-2.076c0-1.734.36-3.052 1.07-3.919.652-.794 1.495-1.163 2.655-1.163.977 0 1.717.211 2.259.645.519.415.844 1.052.994 1.947.13.773.8 1.339 1.584 1.339h1.484a1.604 1.604 0 0 0 1.593-1.812c-.262-2.023-1.113-3.648-2.53-4.832-1.394-1.164-3.209-1.754-5.396-1.754-2.55 0-4.625.897-6.169 2.667-1.487 1.706-2.241 4.003-2.241 6.828v2.228c.009 1.797.364 3.426 1.054 4.843.719 1.479 1.757 2.644 3.087 3.464 1.322.816 2.84 1.229 4.51 1.229 1.545 0 2.974-.242 4.248-.718 1.401-.523 2.468-1.295 3.17-2.293.19-.27.293-.593.293-.924v-6.249a1.607 1.607 0 0 0-1.607-1.606zM122.89 149.991c-1.383-.794-2.955-1.197-4.672-1.197h-4.91c-.887 0-1.606.719-1.606 1.606v17.565c0 .887.719 1.606 1.606 1.606h4.802c1.772 0 3.377-.404 4.772-1.201 1.419-.812 2.533-1.976 3.31-3.461.754-1.441 1.136-3.096 1.136-4.918v-1.616c0-1.815-.384-3.469-1.143-4.919-.78-1.492-1.889-2.658-3.295-3.465zm-.246 8.353v1.546c0 1.693-.412 2.969-1.258 3.898-.807.886-1.875 1.317-3.265 1.317h-1.723v-11.843h1.837c1.342.005 2.379.434 3.172 1.307.832.918 1.237 2.153 1.237 3.775zM138.433 148.794h-5.983c-.887 0-1.606.719-1.606 1.606v17.565c0 .887.719 1.606 1.606 1.606h1.484c.887 0 1.606-.719 1.606-1.606v-5.548h2.857c2.324 0 4.169-.587 5.484-1.746 1.373-1.212 2.069-2.902 2.069-5.023 0-2.106-.717-3.806-2.13-5.052-1.354-1.195-3.166-1.802-5.387-1.802zm2.215 8.546c-.448.406-1.193.611-2.215.611h-2.893v-4.689h2.971c.955.011 1.666.233 2.109.659.272.261.634.725.634 1.747.001 1.007-.345 1.437-.606 1.672zM164.4 166.995l-3.495-5.952a6.487 6.487 0 0 0 1.648-1.52c.877-1.143 1.321-2.473 1.321-3.953 0-2.112-.719-3.802-2.138-5.024-1.349-1.162-3.179-1.751-5.44-1.751h-5.706c-.887 0-1.606.719-1.606 1.606v17.565c0 .887.719 1.606 1.606 1.606h1.496c.887 0 1.606-.719 1.606-1.606v-5.716h2.571l3.782 6.521c.288.496.817.801 1.39.801h1.58c.887 0 1.606-.876 1.606-1.763 0-.287-.076-.568-.221-.814zm-10.708-13.734h2.58c1.018 0 1.78.213 2.264.634.271.235.63.664.63 1.675 0 .679-.199 1.183-.627 1.583-.451.423-1.074.629-1.906.629h-2.941v-4.521z"/></g></g></switch></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h5 class="text-white mb-3">Solutions</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+
+                            {% comment %} <a href="{% url 'users:solution_detail' 'intelligent-customer-experience' %}" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Customer Experience
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:solution_detail' 'enterprise-analytics-risk-management' %}" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Analytics & Risk
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:solution_detail' 'ai-powered-hr-platform' %}" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            HR Platform
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:solution_detail' 'unified-commerce-payments' %}" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Commerce & Payments
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:solution_detail' 'process-automation' %}" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Process Automation
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Industries -->
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h5 class="text-white mb-3">Industries</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:industries' %}#banking" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Banking
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:industries' %}#insurance" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Insurance
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:industries' %}#oil-gas" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Oil & Gas
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" 
+                           class="text-light text-decoration-none">
+                        {% comment %} <a href="{% url 'users:industries' %}#retail" 
+                           class="text-light text-decoration-none"> {% endcomment %}
+                            Retail
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <h5 class="text-white mb-3">Contact Us</h5>
+                <div class="footer-contact">
+                    <div class="contact-item mb-2">
+                        <i class="fas fa-envelope me-2 text-primary"></i>
+                        <a href="mailto:info@dignityconcept.tech" class="text-light text-decoration-none">
+                            info@dignityconcept.tech
+                        </a>
+                    </div>
+                    <div class="contact-item mb-2">
+                        <i class="fas fa-phone me-2 text-primary"></i>
+                        <a href="tel:+2348021299221" class="text-light text-decoration-none">
+                            +234 802 129 9221
+                        </a>
+                    </div>
+                    <div class="contact-item mb-3">
+                        <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                        <span class="text-light">Lagos, Nigeria</span>
+                    </div>
+
+                    <!-- Social Media -->
+                    <div class="social-links">
+                        <a href="#" 
+                           class="text-light me-3" 
+                           target="_blank"
+                           aria-label="Facebook">
+                            <i class="fab fa-facebook-f fa-lg"></i>
+                        </a>
+
+        {% comment %} <a href="https://facebook.com/dignityconcept" 
+                           class="text-light me-3" 
+                           target="_blank"
+                           aria-label="Facebook">
+                            <i class="fab fa-facebook-f fa-lg"></i>
+                        </a> {% endcomment %}
+
+
+                         <a href="#" 
+                           class="text-light me-3" 
+                           target="_blank"
+                           aria-label="Twitter">
+                            <i class="fab fa-twitter fa-lg"></i>
+
+
+                        {% comment %} <a href="https://twitter.com/dignityconcept" 
+                           class="text-light me-3" 
+                           target="_blank"
+                           aria-label="Twitter">
+                            <i class="fab fa-twitter fa-lg"></i> {% endcomment %}
+
+
+                        </a>
+                        <a href="#" 
+                           class="text-light me-3" 
+                           target="_blank"
+                           aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in fa-lg"></i>
+                        </a>
+
+
+                         {% comment %} <a href="https://linkedin.com/company/dignityconcept" 
+                           class="text-light me-3" 
+                           target="_blank"
+                           aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in fa-lg"></i>
+                        </a> {% endcomment %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="row pt-3 border-top border-secondary">
+            <div class="col-md-6 text-center text-md-start">
+                <p class="mb-0 text-muted">
+                    &copy; 2024 Dignity Concept Limited. All rights reserved.
+                </p>
+            </div>
+            <div class="col-md-6 text-center text-md-end">
+                <ul class="list-inline mb-0">
+                    <li class="list-inline-item">
+                        <a href="#" class="text-muted text-decoration-none">
+                            Privacy Policy
+                        </a>
+
+                          {% comment %} <a href="{% url 'privacy_policy' %}" class="text-muted text-decoration-none">
+                            Privacy Policy
+                        </a> {% endcomment %}
+                    </li>
+                    <li class="list-inline-item">
+                        <a href="#" class="text-muted text-decoration-none">
+                            Terms of Service
+                        </a>
+{% comment %} 
+  <a href="{% url 'terms_of_service' %}" class="text-muted text-decoration-none">
+                            Terms of Service
+                        </a> {% endcomment %}
+
+                    </li>
+                    <li class="list-inline-item">
+                        <a href="#" class="text-muted text-decoration-none">
+                            Cookie Policy
+                        </a>
+
+  {% comment %} <a href="{% url 'cookie_policy' %}" class="text-muted text-decoration-none">
+                            Cookie Policy
+                        </a> {% endcomment %}
+
+
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>

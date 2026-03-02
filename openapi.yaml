@@ -1,0 +1,153 @@
+openapi: 3.0.3
+info:
+  title: HRIS API
+  version: 1.0.0
+  description: Combined API schema for HRIS modules (Org, Employees, Attendance, Development, Discipline, Engagement, Benefits)
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /api/org/locations/:
+    get:
+      summary: List all locations
+    post:
+      summary: Create a new location
+  /api/org/locations/{id}/:
+    get:
+      summary: Retrieve a location
+    put:
+      summary: Update a location
+    delete:
+      summary: Delete a location
+
+  /api/org/units/:
+    get:
+      summary: List organizational units
+    post:
+      summary: Create a new unit
+
+  /api/org/workflow-routes/:
+    get:
+      summary: List workflow routes
+    post:
+      summary: Create workflow route
+
+  /api/org/orgchart/data/:
+    get:
+      summary: Get org chart data
+
+  /api/org/orgchart/:
+    get:
+      summary: Render org chart page
+
+  /api/employees/policies/{id}/acknowledge/:
+    post:
+      summary: Acknowledge a policy document
+
+  /api/attendance/records/:
+    get:
+      summary: List attendance records
+    post:
+      summary: Create attendance record
+  /api/attendance/records/{id}/:
+    get:
+      summary: Retrieve attendance record
+    put:
+      summary: Update attendance record
+    delete:
+      summary: Delete attendance record
+
+  /api/attendance/clock-in/:
+    get:
+      summary: List clock-in/out logs
+    post:
+      summary: Create clock-in/out log
+
+  /api/attendance/overtime/:
+    get:
+      summary: List overtime records
+    post:
+      summary: Create overtime record
+
+  /api/attendance/summary/:
+    get:
+      summary: Attendance summary by department/unit
+
+  /api/attendance/overtime-report/:
+    get:
+      summary: Overtime report by department/unit
+
+  /api/development/courses/:
+    get:
+      summary: List courses
+    post:
+      summary: Create course
+  /api/development/sessions/:
+    get:
+      summary: List training sessions
+    post:
+      summary: Create training session
+  /api/development/enrollments/:
+    get:
+      summary: List enrollments
+    post:
+      summary: Enroll employee
+  /api/development/certifications/:
+    get:
+      summary: List certifications
+    post:
+      summary: Issue certification
+  /api/development/skill-matrix/:
+    get:
+      summary: List skill matrix entries
+    post:
+      summary: Update skill matrix
+
+  /api/discipline/warnings/:
+    get:
+      summary: List warnings
+    post:
+      summary: Issue warning
+  /api/discipline/suspensions/:
+    get:
+      summary: List suspensions
+    post:
+      summary: Record suspension
+  /api/discipline/investigations/:
+    get:
+      summary: List investigations
+    post:
+      summary: Start investigation
+
+  /api/engagement/surveys/:
+    get:
+      summary: List surveys
+    post:
+      summary: Create survey
+  /api/engagement/polls/:
+    get:
+      summary: List polls
+    post:
+      summary: Create poll
+  /api/engagement/pulse-checks/:
+    get:
+      summary: List pulse checks
+    post:
+      summary: Submit pulse check
+
+  /api/benefits/health-insurance/:
+    get:
+      summary: List health insurance records
+    post:
+      summary: Add health insurance record
+  /api/benefits/allowances/:
+    get:
+      summary: List allowances
+    post:
+      summary: Add allowance
+  /api/benefits/reimbursements/:
+    get:
+      summary: List reimbursements
+    post:
+      summary: Submit reimbursement request

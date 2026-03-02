@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% load ats_extras %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold">{{ candidate.full_name }}</h2>
+            <p class="text-muted">
+                <i class="bi bi-envelope"></i> {{ candidate.email }} | 
+                <i class="bi bi-telephone"></i> {{ candidate.phone }} |
+                <i class="bi bi-geo-alt"></i> {{ candidate.preferred_location|default:"Anywhere" }}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ candidate.resume.url }}" class="btn btn-outline-primary" target="_blank">
+                <i class="bi bi-file-earmark-pdf"></i> View Resume
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                Schedule Interview
+            </button>
+
+            
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-light"><strong>Skills & Expertise</strong></div>
+                <div class="card-body">
+                    {% for sp in skills %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>{{ sp.skill.name }}</span>
+                            <span class="text-primary">Lvl {{ sp.level }}/5</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar" style="width: {% widthratio sp.level 5 100 %}%"></div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small">No skills profiled yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-light"><strong>Recruiter Notes</strong></div>
+                <div class="card-body">
+                    <p class="small text-secondary">{{ candidate.notes|linebreaks|default:"No notes available." }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <h5 class="mb-3"><span class="badge bg-success">Active Applications</span></h5>
+            {% for app in active_applications %}
+            <div class="card border-start border-primary border-4 mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">{{ app.job_posting.title }}</h6>
+                        <small class="text-muted">ID: {{ app.job_posting.job_id }} | Applied: {{ app.submitted_at|date:"M d, Y" }}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-info text-dark rounded-pill">{{ app.get_status_display }}</span>
+                        <div class="mt-2 small text-primary">Days in Stage: {{ app.days_in_current_stage }} days</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <h5 class="mt-5 mb-3"><span class="badge bg-secondary">Application History</span></h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Job Role</th>
+                            <th>Date</th>
+                            <th>Final Outcome</th>
+                            <th>Feedback Summary</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for app in application_history %}
+                        <tr>
+                            <td>{{ app.job_posting.title }}</td>
+                            <td>{{ app.submitted_at|date:"M Y" }}</td>
+                            <td>
+                                <span class="badge {% if app.status == 'HIRED' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ app.status }}
+                                </span>
+                            </td>
+                            <td class="small">{{ app.interviews.first.feedbacks.first.verdict|default:"N/A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">No prior applications found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{#  Header with Tags & Privacy Actions  #}
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            {{ candidate.full_name }} 
+            {% if candidate.referred_by %}
+                <span class="badge bg-warning text-dark" style="font-size: 0.5em;">
+                    <i class="bi bi-person-heart"></i> Referred by {{ candidate.referred_by.full_name }}
+                </span>
+            {% endif %}
+        </h2>
+        <div class="mb-2">
+            {% for tag in candidate.tags.all %}
+                <span class="badge" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
+            {% endfor %}
+            <button class="btn btn-sm btn-link p-0 ms-2" data-bs-toggle="modal" data-bs-target="#tagModal">+ Add Tag</button>
+        </div>
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            GDPR & Privacy
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#">Download Data (JSON)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#">Anonymize Profile</a></li>
+        </ul>
+    </div>
+</div>
+
+
+
+
+{#  The Spider Chart (using Chart.js)  #}
+<div class="card mb-4">
+    <div class="card-header bg-white font-weight-bold">Competency Matrix</div>
+    <div class="card-body">
+        <canvas id="competencyChart"></canvas>
+    </div>
+</div>
+
+
+
+<div class="card mt-4">
+    <div class="card-header bg-white">
+        <ul class="nav nav-tabs card-header-tabs" id="profileTabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#apps">Applications</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#comms">Communications</button></li>
+        </ul>
+    </div>
+    <div class="card-body tab-content">
+        <div class="tab-pane fade show active" id="apps">
+            </div>
+        <div class="tab-pane fade" id="comms">
+            <div class="list-group list-group-flush">
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">Interview Invite: Junior Dev Role</h6>
+                        <small>3 days ago</small>
+                    </div>
+                    <p class="mb-1 small">Sent by {{ request.user.employee.full_name }}</p>
+                    <span class="badge bg-light text-dark border">Email Delivered</span>
+                </div>
+                </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Evaluation Scorecard</h5>
+        <span class="badge bg-primary fs-6">Total Score: {{ scorecard.total_score|floatformat:1 }}</span>
+    </div>
+    <div class="card-body">
+        <h6 class="text-uppercase text-muted fw-bold small mb-3">Professional Weighting</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr class="small">
+                        <th>Company</th>
+                        <th>Tenure</th>
+                        <th>Tier x Size</th>
+                        <th>Grade Bonus</th>
+                        <th class="text-end">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in scorecard.experience %}
+                    <tr>
+                        <td>{{ item.company }}</td>
+                        <td>{{ item.tenure }} yrs</td>
+                        <td><span class="text-muted">x</span> {{ item.multiplier }}</td>
+                        <td>+{{ item.bonus|percent:0 }}</td>
+                        <td class="text-end fw-bold">{{ item.total|floatformat:1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h6 class="text-uppercase text-muted fw-bold small mb-3">Academic Value (Cumulative)</h6>
+        <div class="row g-2 mb-4">
+            {% for edu in scorecard.education %}
+            <div class="col-md-6">
+                <div class="p-2 border rounded d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold small">{{ edu.qual }}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">{{ edu.inst }}</div>
+                    </div>
+                    <span class="badge bg-light text-dark">+{{ edu.weight }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="alert {% if scorecard.meets_min_exp %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center mb-0">
+            <i class="bi {% if scorecard.meets_min_exp %}bi-check-circle-fill{% else %}bi-exclamation-triangle-fill{% endif %} me-2"></i>
+            <div>
+                {% if scorecard.meets_min_exp %}
+                    Candidate meets the <strong>{{ job_posting.role.min_years_experience }} year</strong> minimum experience requirement.
+                {% else %}
+                    Candidate is <strong>under-experienced</strong> for this role (Requires {{ job_posting.role.min_years_experience }} yrs).
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% comment %} skills {% endcomment %}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><strong>Skill Alignment</strong></div>
+            <ul class="list-group list-group-flush">
+                {% for skill in scorecard.skills %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">{{ skill.name }}</div>
+                        <small class="text-muted">Target Level: {{ skill.required }} | Actual: {{ skill.actual }}</small>
+                    </div>
+                    {% if skill.actual >= skill.required %}
+                        <span class="badge bg-success">+{{ skill.points }}</span>
+                    {% else %}
+                        <span class="badge bg-light text-danger">Gap (-{{ skill.required|subtract:skill.actual }})</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+    <div>
+        <div class="fw-bold">{{ skill.name }}</div>
+        <small class="text-muted">
+            Target: {{ skill.required }} | 
+            Detected: {{ skill.actual }} 
+            <i class="bi bi-robot text-primary" title="Detected via Resume AI"></i>
+        </small>
+    </div>
+    {% if skill.actual >= skill.required %}
+        <span class="badge bg-success">+{{ skill.points }}</span>
+    {% else %}
+        <span class="badge bg-warning">Gap</span>
+    {% endif %}
+</li>
+    <div class="col-md-6">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><strong>Competency Weighting</strong></div>
+            <div class="card-body">
+                {% for comp in scorecard.competencies %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span>{{ comp.name }} (Wt: {{ comp.weight }})</span>
+                        <span class="fw-bold">+{{ comp.points }} pts</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar {% if comp.actual >= comp.required %}bg-primary{% else %}bg-warning{% endif %}" 
+                             role="progressbar" 
+                             style="width: {% widthratio comp.actual 5 100 %}%">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="anonymizeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirm Anonymization</h5>
+            </div>
+            <div class="modal-body">
+                <p><strong>Warning:</strong> This action is irreversible.</p>
+                <ul>
+                    <li>Resume will be permanently deleted.</li>
+                    <li>Name, Email, and Phone will be scrambled.</li>
+                    <li>Historical application counts will be preserved for reporting.</li>
+                </ul>
+                <p>Are you sure you want to "forget" this candidate?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{% url 'ats:anonymize_candidate' candidate.pk %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Yes, Anonymize Data</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('competencyChart');
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: {{ spider_labels|safe }},
+            datasets: [{
+                label: 'Current Level',
+                data: {{ spider_values|safe }},
+                fill: true,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgb(54, 162, 235)',
+                pointBackgroundColor: 'rgb(54, 162, 235)',
+            }]
+        },
+        options: {
+            scales: { r: { min: 0, max: 5, ticks: { stepSize: 1 } } }
+        }
+    });
+</script>
+{% endblock %}

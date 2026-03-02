@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 text-center">
+            <h3>Biometric Integration Hub</h3>
+            <p class="text-muted">Manage your connected ZKTeco or Fingerprint devices here.</p>
+            
+            <div class="card mt-4 mx-auto" style="max-width: 600px;">
+                <div class="card-body">
+                    <h5>Sync Status</h5>
+                    <div class="alert alert-success text-white">
+                        <strong>Connected:</strong> Device IP 192.168.1.201
+                    </div>
+                    
+                    <button class="btn btn-primary" id="syncBtn">Target Manual Sync</button>
+                    <div id="syncResult" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('syncBtn').addEventListener('click', function() {
+    // Mock HTMX behavior
+    document.getElementById('syncResult').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Syncing...';
+    
+    fetch('{% url "attendance:biometric_integration" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('syncResult').innerHTML = `<span class="text-success">${data.message}</span>`;
+    });
+});
+</script>
+{% endblock %}

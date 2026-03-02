@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Delete Work Experience{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-body">
+      <h4>Confirm delete</h4>
+      <p>Delete work experience at <strong>{{ object.company_name }}</strong> for <strong>{{ object.candidate.full_name }}</strong>?</p>
+      <form method="post">{% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a href="{% url 'ats:admin_work_experience_list' %}" class="btn btn-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

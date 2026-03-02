@@ -1,0 +1,21 @@
+<div id="job-comp-section-container"> 
+    <div class="card shadow-lg border-danger">
+        <div class="card-header bg-danger text-white"><h5 class="my-1">Create New Job/Assignment (History)</h5></div>
+        <div class="card-body">
+            <form method="POST" action="{% url 'employees:job_assignment_create' employee_pk=employee.pk %}">
+                {% csrf_token %}
+
+                {% include 'employees/forms/form_fields.html' with form=form %}
+
+                <p class="text-danger small mt-3">Submitting this form will automatically **deactivate** the employee's current job assignment and create a new historical record.</p>
+
+                <div class="d-flex justify-content-end pt-3">
+                    <button type="submit" class="btn btn-success me-2">Submit New Assignment</button>
+                    <a href="{% url 'employees:detail' pk=employee.pk %}" class="btn btn-secondary">
+                        Cancel & Return
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

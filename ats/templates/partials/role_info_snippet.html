@@ -1,0 +1,56 @@
+{% load static %}
+
+<div class="alert alert-info py-2 shadow-sm animate__animated animate__fadeIn">
+    <small><i class="bi bi-info-circle"></i> <strong>Blueprint Loaded:</strong> Profile for <b>{{ role.job_title.name }}</b> applied.</small>
+</div>
+
+<textarea id="id_description" name="description" hx-swap-oob="true" class="form-control" rows="5">
+{{ role.job_title.description }}
+</textarea>
+
+<textarea id="id_requirements" name="requirements" hx-swap-oob="true" class="form-control" rows="10">
+JOB TITLE: {{ role.job_title.name }}
+MINIMUM EXPERIENCE: {{ role.min_years_experience }} Years
+
+REQUIRED EDUCATION:
+{% for qual in role.required_qualifications.all %}• {{ qual.name }}
+{% empty %}• No specific educational requirements listed.{% endfor %}
+
+TECHNICAL SKILLS & COMPETENCIES:
+{% for req in role.org_unit.tenant.competencies.all %} {% comment %} Adjust this filter to your specific Competency model logic {% endcomment %}
+• {{ req.name }}
+{% empty %}• Requirements defined in job blueprint.{% endfor %}
+</textarea>
+
+<div id="id_locations_container" hx-swap-oob="true">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label font-weight-bold mb-0">Locations (Available for {{ role.job_title.name }})</label>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-primary" onclick="toggleLocations(true)">Select All</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="toggleLocations(false)">Clear All</button>
+        </div>
+    </div>
+
+    <select name="locations" id="id_locations" class="form-control" multiple style="height: 150px;">
+        {% for loc in locations %}
+            <option value="{{ loc.id }}">{{ loc.name }}</option>
+        {% empty %}
+            <option disabled>No established branches for this role.</option>
+        {% endfor %}
+    </select>
+
+    <script>
+        function toggleLocations(selectStatus) {
+            const select = document.getElementById('id_locations');
+            if (select) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (!select.options[i].disabled) {
+                        select.options[i].selected = selectStatus;
+                    }
+                }
+                // Trigger change event for Select2 if you are using it
+                $(select).trigger('change');
+            }
+        }
+    </script>
+</div>

@@ -1,0 +1,50 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card">
+        <div class="card-header">
+          <h3>Manager Review: {{ object.employee.full_name }}</h3>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <h6>Employee Self-Assessment</h6>
+            <div class="p-3 bg-gray-100 border-radius-lg">
+              {{ object.employee_comments|linebreaks }}
+            </div>
+          </div>
+
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-4">
+              <label class="form-label">Your Assessment & Feedback</label>
+              <textarea name="manager_comments" class="form-control" rows="8">
+{{ object.manager_comments }}</textarea
+              >
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">Overall Rating (1-5)</label>
+              <input
+                type="number"
+                name="manager_rating"
+                class="form-control"
+                min="1"
+                max="5"
+                step="0.1"
+                value="{{ object.manager_rating|default:'' }}"
+              />
+            </div>
+
+            <div class="text-end">
+              <button type="submit" name="submit" class="btn btn-success">
+                Finalize Review
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

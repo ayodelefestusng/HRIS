@@ -1,0 +1,52 @@
+<div class="offcanvas-header bg-slate-900 text-white border-bottom border-slate-700">
+    <h5 class="offcanvas-title fw-bold">Review Loan Request</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+</div>
+
+<div class="offcanvas-body bg-slate-800 text-slate-200">
+    <div class="d-flex align-items-center mb-4">
+        <div class="p-3 bg-primary bg-opacity-10 rounded-circle me-3">
+            <i class="bi bi-wallet2 text-primary fs-4"></i>
+        </div>
+        <div>
+            <h4 class="fw-bold mb-0 text-white">{{ request.tenant.currency_symbol }}{{ loan.amount_requested }}</h4>
+            <span class="small text-slate-400">Requested by {{ loan.employee.full_name }}</span>
+        </div>
+    </div>
+
+    <div class="admin-card p-3 mb-4 bg-slate-900 border-0">
+        <label class="text-slate-500 x-small uppercase fw-bold mb-1 d-block">Employee Note</label>
+        <p class="small mb-0 fst-italic">"{{ loan.reason }}"</p>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <div class="p-2 border border-slate-700 rounded text-center">
+                <div class="x-small text-slate-500">Repayment</div>
+                <div class="fw-bold">{{ loan.repayment_months }} Months</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="p-2 border border-slate-700 rounded text-center">
+                <div class="x-small text-slate-500">Monthly</div>
+                <div class="fw-bold">{{ request.tenant.currency_symbol }}{{ loan.monthly_installment|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <form hx-post="{% url 'process_loan' loan.id %}" hx-target="#main-content">
+        <div class="mb-4">
+            <label class="form-label small fw-bold">Admin Decision Notes</label>
+            <textarea name="admin_notes" class="form-control bg-slate-900 border-slate-700 text-white" rows="3"></textarea>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button type="submit" name="decision" value="APPROVE" class="btn btn-success py-2">
+                <i class="bi bi-check-circle me-2"></i>Approve & Disburse
+            </button>
+            <button type="submit" name="decision" value="REJECT" class="btn btn-outline-danger py-2">
+                <i class="bi bi-x-circle me-2"></i>Reject Request
+            </button>
+        </div>
+    </form>
+</div>

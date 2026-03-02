@@ -1,0 +1,70 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Stats Stub -->
+    <div class="col-lg-12 mb-4">
+      <h4>My Learning Journey</h4>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6>Active Enrollments & History</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th>Session Date</th>
+                  <th>Status</th>
+                  <th>Score</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for enr in enrollments %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">
+                          {{ enr.session.course.title }}
+                        </h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ enr.session.start_date }}</td>
+                  <td>
+                    <span
+                      class="badge badge-sm bg-gradient-{{ enr.status|yesno:'success,info' }}"
+                    >
+                      {{ enr.get_status_display }}
+                    </span>
+                  </td>
+                  <td>{{ enr.score|default:"-" }}</td>
+                  <td>
+                    {% if enr.status == 'COM' %}
+                    <button class="btn btn-xs btn-outline-success">
+                      Certificate
+                    </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center">
+                    No learning history found.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

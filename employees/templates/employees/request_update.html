@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <div class="row justify-content-center">
+        <div class="col-md-6">  {# limits width to half the page #}
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">Edit Employee Profile</h2>
+                    <form method="POST" enctype="multipart/form-data",>
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="card bg-light border-0 mt-4">
+    <div class="card-body">
+        <h6 class="font-weight-bold">Skill Proficiency Update</h6>
+        <p class="text-xs text-muted">Update your levels (1-10). HR will verify certificates.</p>
+        
+        {% for profile in current_skills %}
+        <div class="mb-3">
+            <label class="form-label text-sm">{{ profile.skill.name }} (Current: {{ profile.level }})</label>
+            <input type="range" name="skill_{{ profile.skill.id }}" 
+                   class="form-range" min="1" max="10" value="{{ profile.level }}">
+        </div>
+        {% endfor %}
+    </div>
+</div>
+                        <button class="btn btn-primary w-100 mt-3">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{#  {% extends "base_public.html" %}  #}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold">Apply for this Position</h3>
+                        <p class="text-muted">You are applying for: <strong>{{ job.role.job_title.name }}</strong></p>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            {{ form.full_name }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            {{ form.email }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Phone Number</label>
+                            {{ form.phone }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Upload Resume (PDF/Word)</label>
+                            {{ form.resume }}
+                            <div class="form-text">Max size: 5MB. Our system will analyze this for skill matching.</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            Submit Application
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="small text-muted">By applying, you agree to our <a href="#">Privacy Policy</a> regarding data retention.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

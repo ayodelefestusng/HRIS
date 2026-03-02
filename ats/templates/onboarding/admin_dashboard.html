@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    /* Slate Dark Theme Overrides */
+    body.mode-admin {
+        background-color: #0f172a; /* Slate 900 */
+        color: #f1f5f9;
+    }
+    .admin-card {
+        background-color: #1e293b; /* Slate 800 */
+        border: 1px solid #334155;
+        border-radius: 12px;
+    }
+    .sidebar-admin {
+        background-color: #020617;
+        border-right: 1px solid #1e293b;
+    }
+    .table-dark-custom {
+        color: #cbd5e1;
+    }
+    .table-dark-custom thead {
+        background-color: #0f172a;
+    }
+    .status-pill {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 mode-admin min-vh-100">
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h2 class="fw-bold text-white mb-1">Onboarding Control Tower</h2>
+            <p class="text-slate-400">Manage new hire verifications and orientation states.</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group shadow-sm">
+                <button class="btn btn-outline-light btn-sm">Export Report</button>
+                <button class="btn btn-primary btn-sm px-3">Add New Hire</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="admin-card p-4">
+                <div class="text-slate-400 small fw-bold mb-1">Active Onboarding</div>
+                <h2 class="fw-bold mb-0">{{ active_count }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-4">
+                <div class="text-slate-400 small fw-bold mb-1">Pending Verification</div>
+                <h2 class="fw-bold mb-0 text-warning">{{ pending_verifications }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-4">
+                <div class="text-slate-400 small fw-bold mb-1">In Orientation</div>
+                <h2 class="fw-bold mb-0 text-info">{{ orientation_count }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-4 border-primary border-opacity-25">
+                <div class="text-slate-400 small fw-bold mb-1">Avg. Completion Time</div>
+                <h2 class="fw-bold mb-0">4.2 Days</h2>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="admin-card overflow-hidden">
+                <div class="p-4 border-bottom border-slate-700 d-flex justify-content-between">
+                    <h5 class="mb-0 fw-bold">Review Queue</h5>
+                    <input type="text" class="form-control form-control-sm w-25 bg-slate-900 border-slate-700 text-white" 
+                           placeholder="Search Candidate..." 
+                           name="q" hx-get="{% url 'admin_search' %}" hx-trigger="keyup changed delay:500ms" hx-target="#admin-table-body">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Candidate</th>
+                                <th>Department</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                                <th>Action Required</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body">
+                            {% include 'onboarding/partials/_admin_table_rows.html' %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-container" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-slate-800 text-white border-slate-700" id="modal-content">
+            </div>
+    </div>
+</div>
+{% endblock %}

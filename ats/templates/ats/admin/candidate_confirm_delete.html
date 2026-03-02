@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Delete Candidate{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-body">
+      <h4>Confirm delete</h4>
+      <p>Are you sure you want to delete candidate <strong>{{ object.full_name }}</strong>?</p>
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, delete</button>
+        <a href="{% url 'ats:admin_candidate_list' %}" class="btn btn-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

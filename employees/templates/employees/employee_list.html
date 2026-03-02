@@ -1,0 +1,112 @@
+{% extends "base.html" %} 
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="mb-1">Employee Directory</h6>
+            {% if request.user.is_hr_manager or request.user.is_hr_officer %}
+              <span class="badge badge-sm bg-gradient-info">Full Directory Access</span>
+            {% elif request.user.is_manager %}
+              <span class="badge badge-sm bg-gradient-primary">Team View: {{ employees.count }} Direct Reports</span>
+            {% else %}
+              <span class="badge badge-sm bg-gradient-secondary">Personal Profile</span>
+            {% endif %}
+          </div>
+          
+          <form method="get" class="form-inline">
+            <div class="input-group">
+              <span class="input-group-text text-body"><i class="fas fa-search" aria-hidden="true"></i></span>
+              <input
+                type="text"
+                name="q"
+                class="form-control form-control-sm"
+                placeholder="Search by name or ID..."
+                value="{{ request.GET.q|default:'' }}"
+              />
+            </div>
+          </form>
+        </div>
+        
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Employee</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Role & Department</th>
+                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                  <th class="text-secondary opacity-7"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for emp in employees %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div>
+                        {% if emp.photo %}
+                          <img src="{{ emp.photo.url }}" class="avatar avatar-sm me-3 rounded-circle" alt="user">
+                        {% else %}
+                          <div class="avatar avatar-sm me-3 bg-gradient-secondary rounded-circle d-flex align-items-center justify-content-center text-black">
+                             {% comment %} <div class="avatar avatar-sm me-3 bg-gradient-secondary rounded-circle"> {% endcomment %}
+                          {{ emp.first_name|first }}{{ emp.last_name|first }}
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ emp.full_name }}</h6>
+                        <p class="text-xs text-secondary mb-0">{{ emp.employee_id }} | {{ emp.employee_email }}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <p class="text-xs font-weight-bold mb-0">{{ emp.primary_job_title }}</p>
+                    <p class="text-xs text-secondary mb-0">{{ emp.primary_department }}</p>
+                  </td>
+                  <td class="align-middle text-center text-sm">
+                    <span class="badge badge-sm {% if emp.work_status == 'ACTIVE' %} text-xs font-weight-bold text-black bg-gradient-success{% else %}text-xs font-weight-bold text-black bg-gradient-warning{% endif %}">
+                      {{ emp.get_work_status_display }}
+                    </span>
+                  </td>
+                  <td class="align-middle">
+                    <a href="{% url 'employees:employee_detail' emp.pk %}" class="btn btn-link text-secondary mb-0">
+                      <i class="fa fa-ellipsis-v text-xs"></i> View Profile
+                    </a>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center py-4">
+                    <p class="text-sm mb-0">No employee records found.</p>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            {% if is_paginated %}
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <span class="text-xs text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+              <nav aria-label="Table navigation">
+                <ul class="pagination pagination-sm mb-0">
+                  {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Previous</a></li>
+                  {% endif %}
+                  {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Next</a></li>
+                  {% endif %}
+                </ul>
+              </nav>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

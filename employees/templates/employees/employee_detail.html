@@ -1,0 +1,118 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card card-profile shadow-sm">
+        <!-- Profile Header -->
+        <div class="card-header text-center border-0 pt-0 pt-lg-2 pb-4 pb-lg-3">
+          <div class="d-flex justify-content-between">
+            <a
+              href="{% url 'employees:employee_list' %}"
+              class="btn btn-sm btn-info mb-0 d-none d-lg-block"
+              >Back to List</a
+            >
+            <a
+              href="{% url 'employees:employee_update' employee.pk %}"
+              class="btn btn-sm btn-dark float-right mb-0 d-none d-lg-block"
+              >Edit</a
+            >
+          </div>
+        </div>
+        <div class="card-body pt-0">
+          <div class="row">
+            <div class="col">
+              <div class="d-flex justify-content-center">
+                <div class="d-grid text-center">
+                  <span class="text-lg font-weight-bolder"
+                    >{{ employee.first_name }} {{ employee.last_name }}</span
+                  >
+                  
+<span class="text-lg font-weight-bolder"
+                    >{% for role in employee.roles.all %}
+  {{ role.org_unit.name }} - {{ role.designation }}
+{% empty %}
+  No Dept / No Title
+{% endfor %}</span
+                  >
+
+
+                  <span class="text-sm opacity-8"
+                    >{{ employee.primary_role.org_unit.name|default:"No Dept" }} - {{ employee.primary_role.designation|default:"No Title" }}
+                  </span
+                  >
+               </div>
+              </div>
+            </div>
+          </div>
+          <div class="text-center mt-4">
+            <div class="h6 font-weight-300">
+              <i class="ni location_pin mr-2"></i>{{ employee.address }} 
+            </div>
+            <div class="h6 mt-4">
+              <i class="ni business_briefcase-24 mr-2"></i>Employee ID:  {{ employee.employee_id }} 
+            </div>
+            <div>
+              <i class="ni education_hat mr-2"></i>{{ employee.employee_email }} | {{ employee.phone_number }}
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="row mt-5">
+    {% if request.user.is_hr_officer or request.user.is_hr_manager or request.user.is_hr_admin or request.user.employee == employee %}
+    <div class="col-md-6 col-lg-2 mb-3">
+        <a href="{% url 'employees:document_list' employee.pk %}" class="btn btn-outline-primary w-100">
+            <i class="ni ni-folder-17"></i> Documents
+        </a>
+    </div>
+    {% endif %}
+
+    {% if request.user.is_hr_officer or request.user.is_hr_manager or request.user.is_hr_admin or request.user.employee == employee %}
+    <div class="col-md-6 col-lg-2 mb-3">
+        <a href="{% url 'employees:employee_update' employee.pk %}" class="btn btn-outline-primary w-100">
+            <i class="ni ni-settings"></i> Edit Profile
+        </a>
+    </div>
+    {% endif %}
+
+    {% if request.user.is_hr_officer or request.user.is_hr_manager or request.user.is_hr_admin or request.user.employee == employee %}
+    <div class="col-md-6 col-lg-2 mb-3">
+        <a href="{% url 'payroll:view_history' employee.pk %}" class="btn btn-outline-success w-100">
+            <i class="ni ni-money-coins"></i> Payslips
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="col-md-6 col-lg-2 mb-3">
+        <a href="#" class="btn btn-outline-warning w-100">
+            <i class="ni ni-umbrella-13"></i> Leave Balance
+        </a>
+    </div>
+
+    {% if request.user.is_hr_officer or request.user.is_hr_manager %}
+    <div class="col-md-6 col-lg-2 mb-3">
+        <a href="{% url 'onboarding:initiate_offboarding' employee.pk %}" class="btn btn-outline-danger w-100">
+            <i class="ni ni-user-run"></i> Offboard
+        </a>
+    </div>
+    {% endif %}
+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% if has_pending_update %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>
+        <strong>Notice:</strong> This employee has a profile update request currently 
+        <strong>pending approval</strong>. The information shown below may be outdated.
+        {% if pending_workflow_id %}
+            <a href="{% url 'workflow:inbox_detail' pending_workflow_id %}" class="alert-link">
+                View Request Details
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

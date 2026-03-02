@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Organization Chart</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      #orgchart { width: 100%; height: 700px; }
+    </style>
+   
+     <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      google.charts.load("current", { packages: ["orgchart"] });
+      google.charts.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+        fetch("{{ api_url }}", { credentials: "include" })
+          .then(response => response.json())
+          .then(data => {
+            var chartData = new google.visualization.DataTable();
+            chartData.addColumn("string", "Name");
+            chartData.addColumn("string", "Manager");
+            chartData.addColumn("string", "ToolTip");
+
+            var rows = [];
+            var employeeMap = {};
+
+            data.forEach(function (item) {
+              var nameWithTitle =
+                item.name +
+                '<div style="color:#666; font-size:11px;">' +
+                item.title +
+                "</div>";
+
+              rows.push([{ v: String(item.employee_id), f: nameWithTitle },
+                         item.manager_id ? String(item.manager_id) : "",
+                         item.title]);
+
+              employeeMap[String(item.employee_id)] = item;
+            });
+
+            chartData.addRows(rows);
+
+            var chart = new google.visualization.OrgChart(document.getElementById("orgchart"));
+            chart.draw(chartData, { allowHtml: true });
+
+            // Modal logic
+            var modal = document.getElementById("employeeModal");
+            var closeBtn = document.querySelector(".close");
+
+            google.visualization.events.addListener(chart, "select", function () {
+              var selection = chart.getSelection();
+              if (selection.length > 0) {
+                var nodeId = chartData.getValue(selection[0].row, 0);
+                var emp = employeeMap[nodeId];
+
+                document.getElementById("empName").textContent = emp.name;
+                document.getElementById("empTitle").textContent = emp.title;
+                document.getElementById("empDept").textContent = emp.department;
+                document.getElementById("empUnit").textContent = emp.unit || "—";
+                document.getElementById("empStatus").textContent = emp.employment_status;
+                document.getElementById("empStart").textContent = emp.start_date;
+
+                modal.style.display = "block";
+              }
+            });
+
+            closeBtn.onclick = function () {
+              modal.style.display = "none";
+            };
+            window.onclick = function (event) {
+              if (event.target == modal) {
+                modal.style.display = "none";
+              }
+            };
+          });
+      }
+    });
+  </script>
+
+  </head>
+  <body>
+    <h2>Organization Chart</h2>
+    <div id="orgchart"></div>
+
+      <!-- Modal -->
+  <div id="employeeModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3 id="empName"></h3>
+      <p><strong>Title:</strong> <span id="empTitle"></span></p>
+      <p><strong>Department:</strong> <span id="empDept"></span></p>
+      <p><strong>Unit:</strong> <span id="empUnit"></span></p>
+      <p><strong>Status:</strong> <span id="empStatus"></span></p>
+      <p><strong>Start Date:</strong> <span id="empStart"></span></p>
+    </div>
+  </div>
+
+  </body>
+</html>

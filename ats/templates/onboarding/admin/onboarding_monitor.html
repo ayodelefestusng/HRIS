@@ -1,0 +1,39 @@
+<div class="admin-card p-4 bg-slate-900">
+    <table class="table table-dark table-hover small">
+        <thead>
+            <tr class="text-slate-500 x-small uppercase">
+                <th>New Hire</th>
+                <th>Start Date</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in active_plans %}
+            <tr>
+                <td class="text-white">{{ plan.employee.full_name }}</td>
+                <td>{{ plan.start_date }}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 bg-slate-800 me-2" style="height: 4px;">
+                            <div class="progress-bar bg-primary" style="width: {{ plan.progress }}%"></div>
+                        </div>
+                        <span class="x-small">{{ plan.progress }}%</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge {% if plan.status == 'leave_application' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                        {{ plan.get_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-xs btn-outline-slate-600" hx-get="{% url 'view_plan_details' plan.id %}">
+                        Audit Tasks
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,149 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Main Stats -->
+    <div class="col-12 mb-4">
+      <div class="card bg-gradient-dark text-white">
+        <div class="card-body p-3">
+          <h5 class="text-white">
+            Performance Cycle: {{ active_cycle.name|default:"No Active Cycle" }}
+          </h5>
+          <p class="mb-0">Deadline: {{ active_cycle.end_date }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Actions -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0">
+          <h6>My Appraisals</h6>
+        </div>
+        <div class="card-body p-2">
+          <ul class="list-group">
+            {% for appraisal in my_appraisals %}
+            <li
+              class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg"
+            >
+              <div class="d-flex align-items-center">
+                <div class="d-flex flex-column">
+                  <h6 class="mb-1 text-dark text-sm">
+                    {{ appraisal.cycle.name }}
+                  </h6>
+                  <span class="text-xs"
+                    >{{ appraisal.get_status_display }}</span
+                  >
+                </div>
+              </div>
+              <div class="d-flex align-items-center text-sm">
+                {% if appraisal.status == 'SELF_REVIEW' %}
+                <a
+                  href="{% url 'performance:self_appraisal' appraisal.pk %}"
+                  class="btn btn-sm btn-primary"
+                  >Start Review</a
+                >
+                {% else %}
+                <a
+                  href="{% url 'performance:review_appraisal' appraisal.pk %}"
+                  class="btn btn-sm btn-outline-dark"
+                  >View</a
+                >
+                {% endif %}
+              </div>
+            </li>
+            {% empty %}
+            <li class="list-group-item">No active appraisals for you.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Reviews -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0">
+          <h6>Pending Your Review (Manager)</h6>
+        </div>
+        <div class="card-body p-2">
+          <ul class="list-group">
+            {% for appraisal in pending_reviews %}
+            <li
+              class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg"
+            >
+              <div class="d-flex align-items-center">
+                <div class="d-flex flex-column">
+                  <h6 class="mb-1 text-dark text-sm">
+                    {{ appraisal.employee.full_name }}
+                  </h6>
+                  <span class="text-xs"
+                    >{{ appraisal.employee.job_title }}</span
+                  >
+                </div>
+              </div>
+              <a
+                href="{% url 'performance:manager_appraisal' appraisal.pk %}"
+                class="btn btn-sm btn-info"
+                >Review</a
+              >
+            </li>
+            {% empty %}
+            <li class="list-group-item">You have no pending reviews.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Requests -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between">
+          <h6>360 Feedback Requests</h6>
+          <a
+            href="{% url 'performance:request_feedback' %}"
+            class="btn btn-sm btn-secondary"
+            >Request Feedback</a
+          >
+        </div>
+        <div class="card-body pt-0">
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Requester</th>
+                  <th>Message</th>
+                  <th>Due Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for req in feedback_requests %}
+                <tr>
+                  <td>{{ req.requester.full_name }}</td>
+                  <td>{{ req.message|truncatechars:30 }}</td>
+                  <td>{{ req.due_date }}</td>
+                  <td>
+                    <a
+                      href="{% url 'performance:provide_feedback' req.pk %}"
+                      class="btn btn-sm btn-outline-primary"
+                      >Provide Feedback</a
+                    >
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center text-muted p-3">
+                    No pending feedback requests.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

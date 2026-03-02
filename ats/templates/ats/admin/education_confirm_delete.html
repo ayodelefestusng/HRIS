@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Delete Education{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-body">
+      <h4>Confirm delete</h4>
+      <p>Delete education record for <strong>{{ object.candidate.full_name }}</strong> - <em>{{ object.institution }}</em>?</p>
+      <form method="post">{% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a href="{% url 'ats:admin_education_list' %}" class="btn btn-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

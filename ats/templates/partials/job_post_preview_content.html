@@ -1,0 +1,33 @@
+<div class="job-post-preview border p-4 bg-light shadow-inner">
+    <div class="text-center mb-4">
+        <h3 class="fw-bold text-uppercase">{{ role.job_title.name }}</h3>
+        <span class="badge bg-success">Hiring Now</span>
+    </div>
+
+    <div class="row mb-4 border-bottom pb-3">
+        <div class="col-4 text-center border-end">
+            <small class="text-muted d-block">Experience</small>
+            <strong>{{ role.min_years_experience }}+ Years</strong>
+        </div>
+        <div class="col-4 text-center border-end">
+            <small class="text-muted d-block">Location</small>
+            <strong>Multiple Branches</strong>
+        </div>
+        <div class="col-4 text-center">
+            <small class="text-muted d-block">Closing Date</small>
+            <strong>{{ closing_date }}</strong>
+        </div>
+    </div>
+
+    <h5>Job Overview</h5>
+    <p class="text-secondary">{{ description|linebreaks }}</p>
+
+    <h5 class="mt-4">Candidate Requirements</h5>
+    <div class="bg-white p-3 border rounded">
+        {{ requirements|linebreaks }}
+    </div>
+
+    <div class="mt-4 small text-muted text-center italic">
+        This is a preview of how the job will appear to applicants.
+    </div>
+</div>

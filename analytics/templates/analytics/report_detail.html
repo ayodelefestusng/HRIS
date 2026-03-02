@@ -1,0 +1,45 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between">
+          <h5>Snapshot Detail</h5>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            onclick="window.print()"
+          >
+            Print Report
+          </button>
+        </div>
+        <div class="card-body">
+          <h6 class="text-muted">Type: {{ object.get_report_type_display }}</h6>
+          <p>Captured: {{ object.captured_at }}</p>
+
+          <hr />
+
+          <h5>Metrics Data</h5>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Metric Key</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for key, value in object.metrics.items %}
+                <tr>
+                  <td>{{ key }}</td>
+                  <td class="font-weight-bold">{{ value }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

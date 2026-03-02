@@ -1,0 +1,43 @@
+<div class="card border-0 shadow-sm mb-4" id="nomination-container">
+    <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-people me-2 text-info"></i>Nominate Peers for 360° Feedback</h6>
+        <p class="small text-muted mb-4">Select up to 3 colleagues to provide feedback on your performance for the {{ active_cycle.name }}.</p>
+
+        <form hx-post="{% url 'submit_nomination' %}" hx-target="#nomination-container" hx-indicator="#nomination-spinner">
+            <div class="mb-3">
+                <label class="form-label x-small uppercase fw-bold">Select Peer</label>
+                <select name="provider_id" class="form-select form-select-sm">
+                    {% for emp in peer_list %}
+                        <option value="{{ emp.id }}">{{ emp.full_name }} ({{ emp.department.name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label x-small uppercase fw-bold">Relationship</label>
+                <select name="relationship" class="form-select form-select-sm">
+                    <option value="PEER">Peer / Colleague</option>
+                    <option value="SUB">Subordinate (Direct Report)</option>
+                    <option value="MGR">Upward (Manager)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-info btn-sm w-100 text-white rounded-pill">
+                <span id="nomination-spinner" class="htmx-indicator spinner-border spinner-border-sm me-2"></span>
+                Send Request
+            </button>
+        </form>
+
+        <div class="mt-4">
+            <label class="x-small uppercase fw-bold text-muted d-block mb-2">Pending Nominations</label>
+            <ul class="list-group list-group-flush">
+                {% for req in pending_nominations %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent">
+                    <span class="small">{{ req.provider.full_name }} <span class="badge bg-light text-dark ms-1">{{ req.relationship }}</span></span>
+                    <i class="bi bi-hourglass-split text-warning"></i>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>

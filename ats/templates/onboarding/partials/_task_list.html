@@ -1,0 +1,36 @@
+{% for task in tasks %}
+<div class="col animate-fade-in" id="task-{{ task.id }}">
+    <div class="card h-100 border-0 shadow-sm {% if task.is_completed %}bg-light-success{% endif %}" 
+         style="transition: all 0.3s ease;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="icon-shape rounded-3 {% if task.is_completed %}bg-success text-white{% else %}bg-primary-soft text-primary{% endif %}">
+                    <i class="bi {% if task.requirement.req_type == 'DOCUMENT' %}bi-file-earmark-arrow-up{% else %}bi-pen{% endif %}"></i>
+                </div>
+                {% if task.is_completed %}
+                    <span class="badge bg-success-soft text-success"><i class="bi bi-check2-circle me-1"></i> Done</span>
+                {% else %}
+                    <span class="badge bg-primary-soft text-primary">Active</span>
+                {% endif %}
+            </div>
+
+            <h6 class="fw-bold mb-1">{{ task.title }}</h6>
+            <p class="text-muted x-small">{{ task.description|truncatewords:12 }}</p>
+
+            {% if not task.is_completed %}
+                <button hx-post="{% url 'complete_task' task.id %}" 
+                        hx-target="#task-grid"
+                        hx-indicator="#loading-{{ task.id }}"
+                        class="btn btn-sm btn-primary w-100 rounded-pill shadow-sm mt-2">
+                    <span id="loading-{{ task.id }}" class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+                    Complete Task
+                </button>
+            {% else %}
+                <div class="text-muted x-small mt-3">
+                    <i class="bi bi-calendar-check me-1"></i> Finished {{ task.completed_at|date:"D, d M" }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}

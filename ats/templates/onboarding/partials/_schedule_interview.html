@@ -1,0 +1,26 @@
+<div class="admin-card p-4 bg-slate-900 border-slate-800">
+    <h6 class="text-white fw-bold mb-3">Schedule Interview: {{ application.candidate.full_name }}</h6>
+    
+    <form hx-post="{% url 'schedule_interview' application.application_id %}" hx-target="#interview-status-msg">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="x-small uppercase fw-bold text-slate-500">Date & Time</label>
+                <input type="datetime-local" name="scheduled_at" class="form-control form-control-sm bg-slate-800 border-slate-700 text-white" required>
+            </div>
+            <div class="col-md-6">
+                <label class="x-small uppercase fw-bold text-slate-500">Panel (Interviewers)</label>
+                <select name="interviewers" class="form-select form-select-sm bg-slate-800 border-slate-700 text-white" multiple>
+                    {% for emp in available_staff %}
+                        <option value="{{ emp.id }}">{{ emp.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 mt-3">
+                <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill">
+                    Confirm & Notify Panel
+                </button>
+            </div>
+        </div>
+    </form>
+    <div id="interview-status-msg" class="mt-2"></div>
+</div>

@@ -1,0 +1,57 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>My Request History</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Ref #</th>
+                  <th>Workflow</th>
+                  <th>Status</th>
+                  <th>Submission Date</th>
+                  <th>Completion Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for req in requests %}
+                <tr>
+                  <td>
+                    <h6 class="mb-0 text-sm">{{ req.approval_ref }}</h6>
+                  </td>
+                  <td>{{ req.workflow.name }}</td>
+                  <td>
+                    {% if req.completed_at %}
+                    <span class="badge bg-success">Completed</span>
+                    {% else %}
+                    <span class="badge bg-warning"
+                      >{{ req.current_stage.name }}</span
+                    >
+                    {% endif %}
+                  </td>
+                  <td>{{ req.created_at|date:"M d, Y" }}</td>
+                  <td>{{ req.completed_at|date:"M d, Y"|default:"-" }}</td>
+                  <td>
+                    <a
+                      href="{% url 'workflow:detail' req.pk %}"
+                      class="btn btn-sm btn-outline-info"
+                      >View</a
+                    >
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

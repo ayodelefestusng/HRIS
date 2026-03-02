@@ -1,0 +1,340 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Sidebar / Stats -->
+    <div class="col-lg-3 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="mb-4">Workflow Stats</h6>
+          <div class="d-flex justify-content-between mb-3">
+            <span class="text-sm">Pending</span>
+            <span class="badge bg-primary">{{ stats.total_pending }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span class="text-sm">Delegated to Me</span>
+            <span class="badge bg-info">{{ stats.delegated_to_me }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-sm">Overdue</span>
+            <span class="badge bg-danger">{{ stats.overdue }}</span>
+          </div>
+
+          <hr />
+          <a
+            href="{% url 'workflow:delegate' %}"
+            class="btn btn-outline-dark w-100 btn-sm"
+            >Delegate Authority</a
+          >
+          <a
+            href="{% url 'workflow:history' %}"
+            class="btn btn-link w-100 btn-sm"
+            >View My History</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Inbox List -->
+    <div class="col-lg-9">
+      <div class="card">
+        <div class="card-header pb-0">
+          <div class="nav-wrapper position-relative end-0">
+            <ul class="nav nav-pills nav-fill p-1" role="tablist">
+              <li class="nav-item">
+                <a
+                  class="nav-link mb-0 px-0 py-1 active"
+                  data-bs-toggle="tab"
+                  href="#pending-tabs"
+                  role="tab"
+                  aria-controls="pending"
+                  aria-selected="true"
+                >
+                  Pending Approvals
+                </a>
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link mb-0 px-0 py-1"
+                  data-bs-toggle="tab"
+                  href="#my-requests-tabs"
+                  role="tab"
+                  aria-controls="my-requests"
+                  aria-selected="false"
+                >
+                  My Requests
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="tab-content" id="myTabContent">
+            <!-- Pending Approvals Tab -->
+            <div
+              class="tab-pane fade show active"
+              id="pending-tabs"
+              role="tabpanel"
+              aria-labelledby="pending-tab"
+            >
+              <div class="table-responsive p-0">
+                <table class="table align-items-center mb-0">
+                  <thead>
+                    <tr>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"
+                      >
+                        Ref #
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Workflow
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Initiator
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Current Stage
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Date
+                      </th>
+                      <th class="text-secondary opacity-7"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for item in items %}
+                    <tr>
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div
+                            class="d-flex flex-column justify-content-center"
+                          >
+                            <h6 class="mb-0 text-sm">
+                              {{ item.approval_ref|default:"Draft" }}
+                            </h6>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <p class="text-xs font-weight-bold mb-0">
+                          {{ item.workflow.name }}
+                        </p>
+                      </td>
+                      <td>
+                        <p class="text-xs font-weight-bold mb-0">
+                          {{ item.initiated_by.full_name }}
+                        </p>
+                      </td>
+                      <td>
+                        <span class="badge badge-sm bg-gradient-warning"
+                          >{{ item.current_stage.name }}</span
+                        >
+                      </td>
+                      <td>
+                        <span class="text-secondary text-xs font-weight-bold"
+                          >{{ item.created_at|date:"M d, Y" }}</span
+                        >
+                      </td>
+                      <td class="align-middle">
+                        <a
+                          href="{% url 'workflow:detail' item.pk %}"
+                          class="btn btn-sm btn-primary"
+                          data-toggle="tooltip"
+                          data-original-title="Review request"
+                        >
+                          Review
+                        </a>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="6" class="text-center p-4">
+                        <p class="text-secondary mb-0">
+                          No pending items. You're all caught up!
+                        </p>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- My Requests Tab -->
+            <div
+              class="tab-pane fade"
+              id="my-requests-tabs"
+              role="tabpanel"
+              aria-labelledby="my-requests-tab"
+            >
+              <div class="table-responsive p-0">
+                <table class="table align-items-center mb-0">
+                  <thead>
+                    <tr>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"
+                      >
+                        Ref #
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Workflow
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Current Stage
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Status
+                      </th>
+                      <th
+                        class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                      >
+                        Date
+                      </th>
+                      <th class="text-secondary opacity-7"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for req in my_requests %}
+                    <tr>
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div
+                            class="d-flex flex-column justify-content-center"
+                          >
+                            <h6 class="mb-0 text-sm">
+                              {{ req.approval_ref|default:"Processing..." }}
+                            </h6>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <p class="text-xs font-weight-bold mb-0">
+                          {{ req.workflow.name }}
+                        </p>
+                      </td>
+                      <td>
+                        <p class="text-xs font-weight-bold mb-0">
+                          {{ req.current_stage.name }}
+                        </p>
+                      </td>
+                      <td>
+                        {% if req.completed_at %} {% if req.target.status ==
+                        'REJECTED' %}
+                        <span class="badge badge-sm bg-gradient-danger"
+                          >Rejected</span
+                        >
+                        {% else %}
+                        <span class="badge badge-sm bg-gradient-success"
+                          >Completed</span
+                        >
+                        {% endif %} {% else %}
+                        <span class="badge badge-sm bg-gradient-info"
+                          >In Progress</span
+                        >
+                        {% endif %}
+                      </td>
+                      <td>
+                        <span class="text-secondary text-xs font-weight-bold"
+                          >{{ req.created_at|date:"M d, Y" }}</span
+                        >
+                      </td>
+                      <td class="align-middle">
+                        <a
+                          href="{% url 'workflow:detail' req.pk %}"
+                          class="text-secondary font-weight-bold text-xs"
+                          data-toggle="tooltip"
+                          data-original-title="View details"
+                        >
+                          View
+                        </a>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="6" class="text-center p-4">
+                        <p class="text-secondary mb-0">
+                          You haven't initiated any requests yet.
+                        </p>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="workflowActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="workflowActionForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Take Action: <span id="workflowTitle"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Reviewing request for: <strong id="initiatorName"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Comments / Remarks</label>
+                        <textarea class="form-control" name="comment" id="comment" rows="3" 
+                            placeholder="Provide a reason for your decision..." required></textarea>
+                    </div>
+                    
+                    <input type="hidden" name="action" id="actionType" value="APP">
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div>
+                        <button type="button" onclick="submitWorkflow('REJ')" class="btn btn-outline-danger">Reject</button>
+                        <button type="button" onclick="submitWorkflow('AMD')" class="btn btn-outline-warning">Request Edit</button>
+                    </div>
+                    <button type="button" onclick="submitWorkflow('APP')" class="btn btn-success">Approve Request</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openWorkflowModal(instanceId, title, initiator) {
+    const form = document.getElementById('workflowActionForm');
+    // Update the form action URL dynamically
+    form.action = `/workflow/action/${instanceId}/`; 
+    document.getElementById('workflowTitle').innerText = title;
+    document.getElementById('initiatorName').innerText = initiator;
+    
+    var myModal = new bootstrap.Modal(document.getElementById('workflowActionModal'));
+    myModal.show();
+}
+
+function submitWorkflow(type) {
+    document.getElementById('actionType').value = type;
+    // Add validation: Rejection and Amendment MUST have comments
+    const comment = document.getElementById('comment').value;
+    if ((type === 'REJ' || type === 'AMD') && comment.trim().length < 5) {
+        alert("Please provide a detailed comment for Rejections or Amendment requests.");
+        return;
+    }
+    document.getElementById('workflowActionForm').submit();
+}
+</script>
+{% endblock %}

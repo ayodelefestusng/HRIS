@@ -1,0 +1,29 @@
+<div class="modal-header bg-primary text-white">
+    <h5 class="modal-title title="Schedule Interview: {{ candidate.full_name }}"">Schedule Interview: {{ candidate.full_name }}</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<form hx-post="{% url 'ats:final_schedule' application.id %}" hx-target="#schedule-feedback">
+    {% csrf_token %}
+    <div class="modal-body">
+        <div id="schedule-feedback"></div> <div class="mb-3">
+            <label class="form-label fw-bold">Interview Date & Time</label>
+            <input type="datetime-local" name="start_time" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Meeting Type</label>
+            <select name="location" class="form-select">
+                <option value="Google Meet">Google Meet (Auto-Link)</option>
+                <option value="Zoom">Zoom</option>
+                <option value="In-Person">In-Person at Office</option>
+            </select>
+        </div>
+        <div class="alert alert-light border small">
+            <i class="bi bi-info-circle me-1"></i> 
+            The candidate ({{ candidate.email }}) will receive a calendar invite automatically.
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary px-4">Confirm & Send Invite</button>
+    </div>
+</form>

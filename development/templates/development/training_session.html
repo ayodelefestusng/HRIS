@@ -1,0 +1,59 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <span class="badge bg-primary mb-2"
+            >{{ session.course.get_category_display }}</span
+          >
+          <h3>{{ session.course.title }}</h3>
+        </div>
+        <div class="card-body">
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <p class="text-sm">
+                <strong>Trainer:</strong> {{
+                session.trainer.full_name|default:"TBD" }}
+              </p>
+              <p class="text-sm">
+                <strong>Location:</strong> {{ session.location }}
+              </p>
+            </div>
+            <div class="col-md-6 text-end">
+              <p class="text-sm">
+                <strong>Date:</strong> {{ session.start_date }} - {{
+                session.end_date }}
+              </p>
+              <p class="text-sm">
+                <strong>Seats:</strong> {{ session.enrollments.count }} / {{
+                session.capacity }}
+              </p>
+            </div>
+          </div>
+
+          <p>{{ session.course.description }}</p>
+
+          <hr />
+
+          {% if is_enrolled %}
+          <div class="alert alert-success text-white border-0">
+            <i class="ni ni-check-bold"></i> You are enrolled in this training.
+          </div>
+          {% else %}
+          <form
+            method="post"
+            action="{% url 'development:enroll_session' session.pk %}"
+          >
+            {% csrf_token %}
+            <button class="btn btn-lg btn-primary w-100">
+              Confirm Enrollment
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

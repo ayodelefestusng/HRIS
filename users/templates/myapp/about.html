@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static  %}
+
+{% block title %}
+<title> {{Title}} </title>
+{% endblock title %}
+
+
+
+{% block content %}
+<style>
+    .mycontainer {
+      display: flex;
+    }
+    .mycontainer > div {
+      width:33%;
+    }
+    </style>
+
+  
+<br>
+<br>
+  <!-- About Content -->
+  <div class="container about-content">
+    <div class="row">
+      <div class="col-md-6">
+        <img src="{% static 'images/powerhouse.jpg' %}" alt="About Us" class="img-fluid">
+      </div>
+      <div class="col-md-6">
+        <h2>Who We Are</h2>
+        <p>Welcome to Kupay FinTech Limited, your trusted partner in loan collection and recovery solutions. We specialize in providing efficient, technology-driven services to banks, Cooperative Societies, Microfinance banks, Finance Houses, and Money Lending companies across Nigeria.</p>
+        <h3>Why Choose Us?</h3>
+        <ul>
+          <li>Technology-Driven Solutions</li>
+          <li>Customer-Centric Approach</li>
+          <li>Experienced Team</li>
+          <li>Compliance with Regulations</li>
+        </ul>
+        <h3>Our Vision</h3>
+        <p>To revolutionize loan recovery in Nigeria by providing innovative, reliable, and customer-friendly solutions.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+
+
+
+
+{% endblock content %}

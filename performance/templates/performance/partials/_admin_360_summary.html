@@ -1,0 +1,27 @@
+<div class="admin-card p-4 bg-slate-900 border-slate-800">
+    <h6 class="text-white fw-bold mb-4">360° Multi-Source Feedback Summary</h6>
+    
+    <div class="row g-3 mb-4">
+        {% for response in completed_responses %}
+        <div class="col-12 p-3 bg-slate-800 rounded border-start border-primary border-4">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="badge bg-slate-700 text-primary">{{ response.request.get_relationship_display }}</span>
+                <span class="text-white fw-bold">{{ response.average_rating }}/5.0</span>
+            </div>
+            
+            <div class="row small g-2">
+                <div class="col-4 text-success"><i class="bi bi-play-circle me-1"></i>Start: <span class="text-slate-400">{{ response.what_to_start|truncatechars:50 }}</span></div>
+                <div class="col-4 text-danger"><i class="bi bi-stop-circle me-1"></i>Stop: <span class="text-slate-400">{{ response.what_to_stop|truncatechars:50 }}</span></div>
+                <div class="col-4 text-info"><i class="bi bi-arrow-repeat me-1"></i>Keep: <span class="text-slate-400">{{ response.what_to_continue|truncatechars:50 }}</span></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if aggregate_score < 3.0 %}
+    <div class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger small">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> 
+        <strong>Critical Feedback:</strong> Peers have identified significant behavioral gaps. HR review advised.
+    </div>
+    {% endif %}
+</div>

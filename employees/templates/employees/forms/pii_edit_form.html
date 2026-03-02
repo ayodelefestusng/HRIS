@@ -1,0 +1,25 @@
+<div id="pii-section-container"> 
+    <div class="card shadow-lg border-warning">
+        <div class="card-header bg-warning text-dark"><h5 class="my-1">Editing Personal Data</h5></div>
+        <div class="card-body">
+            <form method="POST" 
+                  hx-post="{% url 'employees:update_pii' pk=employee.pk %}"
+                  hx-target="#pii-section-container" 
+                  hx-swap="outerHTML">
+                {% csrf_token %}
+
+                {% include 'employees/forms/form_fields.html' with form=form %} 
+
+                <div class="d-flex justify-content-end pt-3">
+                    <button type="submit" class="btn btn-success me-2">Save PII</button>
+                    <button type="button" class="btn btn-secondary"
+                            hx-get="{% url 'employees:detail' pk=employee.pk %}"
+                            hx-target="#pii-section-container" 
+                            hx-swap="outerHTML">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

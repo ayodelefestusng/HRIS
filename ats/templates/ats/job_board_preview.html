@@ -1,0 +1,95 @@
+{% extends "base.html" %} 
+
+{% comment %} {% extends "base_public.html" %}  {% endcomment %}
+{% block content %}
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm p-4 mb-4">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-4">
+                            <li class="breadcrumb-item"><a href="#">Careers</a></li>
+                            <li class="breadcrumb-item active">{{ job.role.job_title.name }}</li>
+                        </ol>
+                    </nav>
+
+                    <h1 class="fw-bold mb-3">{{ job.role.job_title.name }}</h1>
+                    
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        <span class="badge bg-soft-primary text-primary px-3 py-2">
+                            <i class="bi bi-briefcase me-1"></i> {{ job.get_employment_type_display }}
+                        </span>
+                        <span class="badge bg-soft-success text-success px-3 py-2">
+                            <i class="bi bi-geo-alt me-1"></i> 
+                            {% for loc in job.locations.all %}{{ loc.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                        </span>
+                        <span class="badge bg-soft-info text-info px-3 py-2">
+                            <i class="bi bi-clock me-1"></i> Closes {{ job.closing_date|date:"M d, Y" }}
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold mt-4">About the Role</h5>
+                    <div class="text-secondary mb-4" style="line-height: 1.8;">
+                        {{ job.description|linebreaks }}
+                    </div>
+
+                    <h5 class="fw-bold mt-4">What We Are Looking For</h5>
+                    <div class="bg-light p-3 rounded mb-4">
+                        {{ job.requirements|linebreaks }}
+                    </div>
+
+                    <h5 class="fw-bold mt-4">Key Skills & Competencies</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                {% for s in skills %}
+                                <li class="list-group-item bg-transparent border-0 ps-0">
+                                    <i class="bi bi-check-circle-fill text-primary me-2"></i> {{ s.skill_name.name }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm p-4 sticky-top" style="top: 20px;">
+                    <h5 class="fw-bold mb-3">Apply Now</h5>
+                    <p class="small text-muted mb-4">Interested in this position? Submit your application and our HR team will review your profile against our weighted criteria.</p>
+                    
+                    <a href="{% url 'ats:candidate_apply' job.id %}" class="btn btn-primary btn-lg w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-info-circle"></i> Apply for this Position
+                    </a>
+                    
+                    <hr>
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-shield-check fs-3 text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-0 small fw-bold">Verified Posting</h6>
+                            <p class="mb-0 x-small text-muted">Posted by {{ job.tenant.name }} HR Team</p>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <a href="#" class="text-decoration-none small text-muted">
+                            <i class="bi bi-share me-1"></i> Share this Job
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-soft-primary { background-color: #e7f1ff; }
+    .bg-soft-success { background-color: #e1f5ea; }
+    .bg-soft-info { background-color: #e0f7fa; }
+    .x-small { font-size: 0.75rem; }
+</style>
+{% endblock %}

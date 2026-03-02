@@ -1,0 +1,306 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Sidebar / Stats -->
+    <div class="col-lg-3 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="mb-4">Workflow Stats</h6>
+          <div class="d-flex justify-content-between mb-3">
+            <span class="text-sm">Pending</span>
+            <span class="badge bg-primary">{{ stats.total_pending }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span class="text-sm">Delegated to Me</span>
+            <span class="badge bg-info">{{ stats.delegated_to_me }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-sm">Overdue</span>
+            <span class="badge bg-danger">{{ stats.overdue }}</span>
+          </div>
+
+          <hr />
+          <a
+            href="{% url 'workflow:delegate' %}"
+            class="btn btn-outline-dark w-100 btn-sm"
+            >Delegate Authority</a
+          >
+          <a
+            href="{% url 'workflow:history' %}"
+            class="btn btn-link w-100 btn-sm"
+            >View My History</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Inbox List -->
+    <div class="col-lg-9">
+      <div class="card">
+        <div class="card-header pb-0">
+          <div class="nav-wrapper position-relative end-0">
+            <ul class="nav nav-pills nav-fill p-1" role="tablist">
+              <li class="nav-item">
+                <a
+                  class="nav-link mb-0 px-0 py-1 active"
+                  data-bs-toggle="tab"
+                  href="#pending-tabs"
+                  role="tab"
+                  aria-controls="pending"
+                  aria-selected="true"
+                >
+                  Pending Approvals
+                </a>
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link mb-0 px-0 py-1"
+                  data-bs-toggle="tab"
+                  href="#my-requests-tabs"
+                  role="tab"
+                  aria-controls="my-requests"
+                  aria-selected="false"
+                >
+                  My Requests
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="tab-content" id="myTabContent">
+            <!-- Pending Approvals Tab -->
+            <div
+              class="tab-pane fade show active"
+              id="pending-tabs"
+              role="tabpanel"
+              aria-labelledby="pending-tab"
+            >
+           <form id="batchActionForm" method="POST" action="{% url 'workflow:batch_action' %}">
+  {% csrf_token %}
+  <div class="table-responsive">
+    <table class="table align-items-center mb-0">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selectAll"></th> <th class="text-xxs font-weight-bolder opacity-7">Ref # / Initiator</th>
+          <th class="text-xxs font-weight-bolder opacity-7">Workflow</th>
+          <th class="text-xxs font-weight-bolder opacity-7">Current Stage</th>
+          <th class="text-xxs font-weight-bolder opacity-7">Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><input type="checkbox" name="instance_ids" value="{{ item.id }}" class="item-checkbox"></td>
+          <td>
+             <div class="d-flex px-2 py-1">
+                <div class="d-flex flex-column justify-content-center">
+                   <h6 class="mb-0 text-sm">{{ item.approval_ref }}</h6>
+                   <p class="text-xs text-secondary mb-0">{{ item.initiated_by.full_name }}</p>
+                </div>
+             </div>
+          </td>
+          <td>{{ item.workflow.name }}</td>
+          <td><span class="badge badge-sm bg-gradient-warning">{{ item.current_stage.name }}</span></td>
+          <td>{{ item.created_at|date:"M d" }}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-link" onclick="openWorkflowModal('{{ item.id }}')">Action</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div id="batchActionBar" class="card card-body blur shadow-blur position-fixed bottom-1 start-50 translate-middle-x z-index-3 d-none" style="width: 50%;">
+    <div class="d-flex justify-content-between align-items-center">
+      <span class="text-sm font-weight-bold"><span id="selectedCount">0</span> items selected</span>
+      <div>
+        <input type="text" name="batch_comment" placeholder="Batch comment..." class="form-control-sm border-1 me-2">
+        <button type="submit" name="action" value="APP" class="btn btn-sm bg-gradient-success mb-0">Approve Selected</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% for req in my_requests %}
+<tr>
+  <td class="align-middle">
+    <div class="progress-wrapper w-75 mx-auto">
+      <div class="progress-info">
+        <div class="progress-percentage">
+          <span class="text-xs font-weight-bold">Stage {{ req.current_stage.sequence }} of {{ req.workflow.stages.count }}</span>
+        </div>
+      </div>
+      <div class="progress">
+        <div class="progress-bar bg-gradient-info" role="progressbar" 
+             style="width: {{ req.get_progress_percentage }}%;"></div>
+      </div>
+    </div>
+  </td>
+</tr>
+{% endfor %}
+
+              <!-- My Requests Tab -->
+              <div
+                class="tab-pane fade"
+                id="my-requests-tabs"
+                role="tabpanel"
+                aria-labelledby="my-requests-tab"
+              >
+                <div class="table-responsive p-0">
+                  <table class="table align-items-center mb-0">
+                    <thead>
+                      <tr>
+                        <th
+                          class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"
+                        >
+                          Ref #
+                        </th>
+                        <th
+                          class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                        >
+                          Workflow
+                        </th>
+                        <th
+                          class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                        >
+                          Current Stage
+                        </th>
+                        <th
+                          class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                        >
+                          Status
+                        </th>
+                        <th
+                          class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2"
+                        >
+                          Date
+                        </th>
+                        <th class="text-secondary opacity-7"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for req in my_requests %}
+                      <tr>
+                        <td>
+                          <div class="d-flex px-2 py-1">
+                            <div
+                              class="d-flex flex-column justify-content-center"
+                            >
+                              <h6 class="mb-0 text-sm">
+                                {{ req.approval_ref|default:"Processing..." }}
+                              </h6>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <p class="text-xs font-weight-bold mb-0">
+                            {{ req.workflow.name }}
+                          </p>
+                        </td>
+                        <td>
+                          <p class="text-xs font-weight-bold mb-0">
+                            {{ req.current_stage.name }}
+                          </p>
+                        </td>
+                        <td>
+                          {% if leave_application.completed_at %} {% if
+                          leave_application.target.status == 'REJECTED' %}
+                          <span class="badge badge-sm bg-gradient-danger"
+                            >Rejected</span
+                          >
+                          {% else %}
+                          <span class="badge badge-sm bg-gradient-success"
+                            >Completed</span
+                          >
+                          {% endif %}
+                        </td>
+                        <td>
+                          <span class="text-secondary text-xs font-weight-bold"
+                            >{{ req.created_at|date:"M d, Y" }}</span
+                          >
+                        </td>
+                        <td class="align-middle">
+                          <a
+                            href="{% url 'workflow:detail' req.pk %}"
+                            class="text-secondary font-weight-bold text-xs"
+                            data-toggle="tooltip"
+                            data-original-title="View details"
+                          >
+                            View
+                          </a>
+                        </td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="6" class="text-center p-4">
+                          <p class="text-secondary mb-0">
+                            You haven't initiated any requests yet.
+                          </p>
+                        </td>
+                      </tr>
+                      {% endfor %} {% for req in my_requests %}
+                      <tr>
+                        <td class="align-middle">
+                          <div class="progress-wrapper w-75 mx-auto">
+                            <div class="progress-info">
+                              <div class="progress-percentage">
+                                <span class="text-xs font-weight-bold"
+                                  >Stage {{ req.current_stage.sequence }} of {{
+                                  req.workflow.stages.count }}</span
+                                >
+                              </div>
+                            </div>
+                            <div class="progress">
+                              <div
+                                class="progress-bar bg-gradient-info"
+                                role="progressbar"
+                                style="width: {{ req.get_progress_percentage }}%;"
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document
+      .getElementById("selectAll")
+      .addEventListener("change", function () {
+        const checkboxes = document.querySelectorAll(".item-checkbox");
+        checkboxes.forEach((cb) => (cb.checked = this.checked));
+        updateBatchBar();
+      });
+
+    document.querySelectorAll(".item-checkbox").forEach((cb) => {
+      cb.addEventListener("change", updateBatchBar);
+    });
+
+    function updateBatchBar() {
+      const checkedCount = document.querySelectorAll(
+        ".item-checkbox:checked",
+      ).length;
+      const bar = document.getElementById("batchActionBar");
+      document.getElementById("selectedCount").innerText = checkedCount;
+
+      if (checkedCount > 0) {
+        bar.classList.remove("d-none");
+      } else {
+        bar.classList.add("d-none");
+      }
+    }
+  </script>
+  {% endblock %}
+</div>

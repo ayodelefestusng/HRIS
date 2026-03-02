@@ -1,0 +1,66 @@
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between">
+        <h5 class="my-1">Employee Profile (ID: {{ employee.employee_id }})</h5>
+        <button class="btn btn-warning btn-sm"
+                hx-get="{% url 'employees:edit_form' pk=employee.pk %}"
+                hx-target="#employee-profile-container" 
+                hx-swap="outerHTML">
+            Edit Details
+        </button>
+    </div>
+
+    <div class="card-body">
+        <ul class="nav nav-tabs" id="employeeDetailsTab" role="tablist">
+            <li class="nav-item"><a class="nav-link active" id="job-tab" data-bs-toggle="tab" href="#job">Job</a></li>
+            <li class="nav-item"><a class="nav-link" id="personal-tab" data-bs-toggle="tab" href="#personal">Personal & PII</a></li>
+            <li class="nav-item"><a class="nav-link" id="contact-tab" data-bs-toggle="tab" href="#contact">Emergency & NOK</a></li>
+            <li class="nav-item"><a class="nav-link" id="id-tab" data-bs-toggle="tab" href="#id-docs">ID Documents</a></li>
+        </ul>
+        
+        <div class="tab-content pt-3" id="employeeDetailsContent">
+            <div class="tab-pane fade show active" id="job" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6"><p><strong>Department:</strong> {{ employee.department }}</p></div>
+                    <div class="col-md-6"><p><strong>Manager:</strong> {{ employee.manager|default:'N/A' }}</p></div>
+                    <div class="col-md-6"><p><strong>Job Title:</strong> {{ employee.job_title }}</p></div>
+                    <div class="col-md-6"><p><strong>Hire Date:</strong> {{ employee.hire_date|date:"Y-m-d" }}</p></div>
+                    <div class="col-md-6"><p><strong>Status:</strong> {{ employee.get_status_display }}</p></div>
+                    <div class="col-md-6"><p><strong>Salary:</strong> ${{ employee.salary|floatformat:2|default:'N/A' }}</p></div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="personal" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6"><p><strong>DOB:</strong> {{ employee.date_of_birth|date:"Y-m-d" }}</p></div>
+                    <div class="col-md-6"><p><strong>Gender:</strong> {{ employee.get_gender_display }}</p></div>
+                    <div class="col-md-6"><p><strong>Nationality:</strong> {{ employee.nationality|default:'N/A' }}</p></div>
+                    <div class="col-md-6"><p><strong>Mother's Maiden Name:</strong> {{ employee.mother_maiden_name|default:'N/A' }}</p></div>
+                    <div class="col-12 mt-3"><h6>Current Address</h6></div>
+                    <div class="col-md-6"><p><strong>Street:</strong> {{ employee.address|default:'N/A' }} ({{ employee.house_number|default:'N/A' }})</p></div>
+                    <div class="col-md-6"><p><strong>City/State/Country:</strong> {{ employee.city|default:'N/A' }}, {{ employee.state|default:'N/A' }}, {{ employee.country|default:'N/A' }}</p></div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="contact" role="tabpanel">
+                <div class="row">
+                    <div class="col-12"><h6>Emergency Contact</h6></div>
+                    <div class="col-md-6"><p><strong>Name:</strong> {{ employee.emergency_contact_name|default:'N/A' }}</p></div>
+                    <div class="col-md-6"><p><strong>Phone:</strong> {{ employee.emergency_contact_phone_number|default:'N/A' }}</p></div>
+
+                    <div class="col-12 mt-3"><h6>Next of Kin</h6></div>
+                    <div class="col-md-4"><p><strong>Name:</strong> {{ employee.next_of_kin|default:'N/A' }}</p></div>
+                    <div class="col-md-4"><p><strong>Phone:</strong> {{ employee.next_of_kin_phone_number|default:'N/A' }}</p></div>
+                    <div class="col-md-4"><p><strong>Email:</strong> {{ employee.next_of_kin_email|default:'N/A' }}</p></div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="id-docs" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-4"><p><strong>Passport No:</strong> {{ employee.passport_number|default:'N/A' }}</p></div>
+                    <div class="col-md-4"><p><strong>National ID No:</strong> {{ employee.national_id_number|default:'N/A' }}</p></div>
+                    <div class="col-md-4"><p><strong>Driver License No:</strong> {{ employee.driver_license_number|default:'N/A' }}</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

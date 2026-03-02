@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Onboarding Checklist: {{ plan.application.candidate.full_name }}</h5>
+                    <p class="text-sm mb-0">Role: {{ plan.application.job_posting.title }} | Start Date: {{ plan.start_date }}</p>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for task in plan.tasks.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">{{ task.title|default:"Task Title Stub" }}</h6> <!-- Assuming task model has title -->
+                                <p class="text-xs text-muted mb-0">{{ task.description }}</p>
+                            </div>
+                            <div>
+                                {% if task.is_completed %}
+                                <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-primary mb-0"
+                                        hx-post="{% url 'onboarding:complete_task' task.pk %}"
+                                        hx-swap="outerHTML">
+                                    Mark Done
+                                </button>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-center">No tasks assigned yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+<h3>Workflow Approval Request</h3>
+<p>Hello {{ approver.first_name }},</p>
+<p><strong>{{ initiator.full_name }}</strong> has submitted a {{ instance.workflow.name }} for your review.</p>
+
+<div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+    <h4>Proposed Changes:</h4>
+    {{ instance|get_diff }} </div>
+
+<div style="margin-top: 20px;">
+    <a href="{{ base_url }}/workflow/action/{{ instance.id }}/?action=approve" 
+       style="background-color: #2dce89; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+       Approve Now
+    </a>
+    <a href="{{ base_url }}/workflow/action/{{ instance.id }}/?action=reject" 
+       style="background-color: #f5365c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+       Reject
+    </a>
+</div>
+<p style="margin-top: 15px;">
+    <a href="{{ base_url }}/workflow/inbox/">View full details and add comments in the Inbox</a>
+</p>

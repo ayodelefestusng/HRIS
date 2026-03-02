@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load ats_extras %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Candidate Pipeline</h2>
+            <p class="text-muted small">Manage and track your recruitment stages</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'ats:search_candidates' %}" class="btn btn-outline-primary rounded-pill">
+                <i class="bi bi-search"></i> Search Database
+            </a>
+            <a href="{% url 'ats:post_job' %}" class="btn btn-primary rounded-pill">
+                <i class="bi bi-plus-lg"></i> Post New Job
+            </a>
+        </div>
+    </div>
+
+    <div class="row flex-nowrap overflow-auto pb-4 custom-scrollbar" style="min-height: 75vh;">
+        {% for stage in stages %}
+        <div class="col-md-3" style="min-width: 320px;">
+            <div class="glass-card h-100 d-flex flex-column bg-light-soft">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white-50">
+                    <h6 class="fw-bold mb-0 text-uppercase letter-spacing-1">{{ stage }}</h6>
+                    <span class="badge rounded-pill bg-primary-soft text-primary px-3">
+                        {{ applications|filter_status_count:stage }}
+                    </span>
+                </div>
+                
+                <div class="p-3 flex-grow-1 overflow-auto" id="stage-{{ stage|lower }}">
+                    {% for app in applications %}
+                        {% if app.status == stage %}
+                        <div class="glass-card p-3 mb-3 bg-white border-0 shadow-sm animate-fade-in" id="app-card-{{ app.id }}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold mb-0">
+                                    <a href="{% url 'ats:candidate_application' app.pk %}" class="text-dark text-decoration-none hover-primary">
+                                        {{ app.candidate.full_name }}
+                                    </a>
+                                </h6>
+                                <div class="dropdown">
+                                    <button class="btn btn-link btn-sm p-0 text-muted" data-bs-toggle="dropdown" title="Candidate Actions">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">{% for target_stage in stages %}{% if target_stage != stage %}<li><button class="dropdown-item small" hx-post="{% url 'ats:update_application_status' app.pk %}" hx-vals='{"status": "{{ target_stage }}"}' hx-target="#status-badge-{{ app.id }}" hx-swap="innerHTML">Move to {{ target_stage|title }}</button></li>{% endif %}{% endfor %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item small text-danger" href="#">Archive Application</a></li></ul>
+                                </div>
+                            </div>
+                            
+                            <p class="text-muted small mb-2">
+                                <i class="bi bi-briefcase me-1"></i> {{ app.job_posting.role.job_title.name }}
+                            </p>
+                            
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div id="status-badge-{{ app.id }}">
+                                    <span class="badge badge-soft-primary small">
+                                        {{ app.status }}
+                                    </span>
+                                </div>
+                                    {% if app.status == 'APPLIED' %}
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                hx-post="{% url 'ats:update_application_status' app.pk %}" 
+                                                hx-vals='{"status": "SCREENING"}' 
+                                                hx-target="#status-badge-{{ app.id }}" 
+                                                hx-swap="innerHTML"
+                                                hx-on::after-request="setTimeout(() => window.location.reload(), 500)"
+                                                title="Move to Screening">
+                                            <i class="bi bi-funnel"></i>
+                                        </button>
+                                    {% elif app.status == 'SCREENING' %}
+                                        <a href="{% url 'ats:schedule_interview' app.pk %}" 
+                                           class="btn btn-sm btn-outline-success" 
+                                           title="Schedule Interview">
+                                            <i class="bi bi-calendar-plus"></i>
+                                        </a>
+                                    {% elif app.status == 'SCHEDULED FOR INTERVIEW' %}
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                hx-post="{% url 'ats:update_application_status' app.pk %}" 
+                                                hx-vals='{"status": "INTERVIEWED"}' 
+                                                hx-target="#status-badge-{{ app.id }}" 
+                                                hx-swap="innerHTML"
+                                                hx-on::after-request="setTimeout(() => window.location.reload(), 500)"
+                                                title="Mark as Interviewed">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                        </button>
+                                    {% elif app.status == 'INTERVIEWED' %}
+                                        <button class="btn btn-sm btn-outline-warning" 
+                                                hx-post="{% url 'ats:update_application_status' app.pk %}" 
+                                                hx-vals='{"status": "OFFER"}' 
+                                                hx-target="#status-badge-{{ app.id }}" 
+                                                hx-swap="innerHTML"
+                                                hx-on::after-request="setTimeout(() => window.location.reload(), 500)"
+                                                title="Make Offer">
+                                            <i class="bi bi-trophy"></i>
+                                        </button>
+                                    {% elif app.status == 'OFFER' %}
+                                        <button class="btn btn-sm btn-success" 
+                                                hx-post="{% url 'ats:update_application_status' app.pk %}" 
+                                                hx-vals='{"status": "HIRED"}' 
+                                                hx-target="#status-badge-{{ app.id }}" 
+                                                hx-swap="innerHTML"
+                                                hx-on::after-request="setTimeout(() => window.location.reload(), 500)"
+                                                title="Hire Candidate">
+                                            <i class="bi bi-person-check-fill"></i>
+                                        </button>
+                                    {% endif %}
+                                    <a href="{% url 'ats:candidate_application' app.pk %}" class="btn btn-sm btn-outline-secondary" title="View Profile">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .bg-light-soft { background-color: rgba(248, 250, 252, 0.5); }
+    .bg-white-50 { background-color: rgba(255, 255, 255, 0.5); }
+    .letter-spacing-1 { letter-spacing: 1px; }
+    .hover-primary:hover { color: var(--brand-primary) !important; }
+    .custom-scrollbar::-webkit-scrollbar { height: 8px; }
+    .bg-primary-soft { 
+        background-color: rgba(var(--brand-primary-rgb), 0.1); 
+        color: var(--brand-primary); 
+    }
+</style>
+{% endblock %}

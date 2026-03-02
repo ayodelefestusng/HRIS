@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% block extra_css %}
+<!-- Optional extra styles -->
+{% endblock %}
+
+
+
+
+{% block nav_links %}
+
+                <a class="nav-link" style=color:white href="{% url 'ai:chat_home' %}">ChatBot</a>
+                <a class="nav-link" style=color:white href="{% url 'ai:summary' %}">Summary</a>
+                <a class="nav-link" style=color:white href="{% url 'ai:send_message3' 'hello' '1' %}">API</a>
+                <a class="nav-link" style=color:white  href="#">HR</a>
+
+{% endblock %}
+
+ {% block content %}
+<!-- Your page-specific content here -->
+{% endblock %}
+
+    
+{% block extra_js %}
+<!-- Optional scripts -->
+{% endblock %}

@@ -1,0 +1,90 @@
+<div class="alert alert-info py-2 shadow-sm">
+    <small><i class="bi bi-info-circle"></i> <strong>Blueprint Loaded:</strong> {{ role.job_title.name }} requirements have been applied below.</small>
+</div>
+
+<textarea id="id_description" name="description" hx-swap-oob="true" class="form-control" rows="5">{{ description }}</textarea>
+
+<textarea id="id_requirements" name="requirements" hx-swap-oob="true" class="form-control" rows="5">
+
+<p><strong>Title:</strong> {{ role.job_title.name }}</p>
+<p><strong>Description:</strong> {{ role.job_title.description }}</p>
+<p><strong>Min Years Experience:</strong> {{ role.min_years_experience }}</p>
+
+
+RAW
+title : {{ role.job_title }}
+Description :   {{ role.job_title.description }}
+Name : {{ role.job_title.name }}
+Min Years Experience : {{ role.min_years_experience }}
+Required Education : {{ role.required_education }}
+Required Skills : {{ role.required_skills }}
+Required Competencies : {{ role.competencies.competency.name }}
+
+
+<p><strong>Required Qualifications:</strong> 
+    {% for qual in role.required_qualifications.all %}
+        {{ qual.name }}{% if not forloop.last %}, {% endif %}
+    {% empty %}
+        None specified
+    {% endfor %}
+</p>
+
+<h3>Required Competencies</h3>
+<ul>
+    {% for req in role.competencies.all %}
+        <li>
+            <strong>{{ req.competency.name }}</strong> 
+            (Required Level: {{ req.required_level }}, Weight: {{ req.weight }})
+        </li>
+    {% empty %}
+        <li>No specific competencies required for this role.</li>
+    {% endfor %}
+</ul>
+Required Qualifications : {{ role.required_qualifications }}
+    {{ role.job_title.required_qualifications }}
+    {{ role.job_title.required_qualifications }}
+    {{ role.job_title.required_qualifications }}
+    {{ role.job_title.required_qualifications }}
+
+JOB DESCRIPTION: 
+{{ role.job_title.description }}
+
+REQUIRED EXPERIENCE: 
+{{ role.job_title.min_years_experience   }} Years minimum in a similar role.
+{% comment %} {{ role.min_years_experience }} Years minimum in a similar role. {% endcomment %}
+raw
+
+REQUIRED EDUCATION:
+{% comment %} {{ qualifications }} {% endcomment %}
+{% for q in qualifications %}• {{ q.qualification_level.name }} (Required Level: {{ q.required_level }})
+{% endfor %}
+
+
+
+TECHNICAL SKILLS:
+{% for s in skills %}• {{ s.skill_name.name }} (Required Level: {{ s.required_level }})
+{% endfor %}
+COMPETENCIES:
+{% for c in competencies %}• {{ c.competency.name }} (Weight: {{ c.weight }})
+{% endfor %}
+
+
+
+
+
+</textarea>
+
+
+
+
+
+
+
+<div id="id_locations_container" hx-swap-oob="true">
+    {% include "partials/location_selector.html" with locations=locations %}
+</div>
+
+ghjjj
+
+
+

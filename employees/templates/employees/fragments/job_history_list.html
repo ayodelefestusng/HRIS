@@ -1,0 +1,31 @@
+<table class="table table-sm table-striped mb-0">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Department / Unit</th>
+      <th>Start Date</th>
+      <th>End Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in job_history %}
+      <tr>
+        <td>{{ job.job_title.name }}</td>
+        <td>
+          {{ job.department.name }}
+          {% if job.unit %}
+            / {{ job.unit.name }}
+          {% endif %}
+        </td>
+        <td>{{ job.start_date|date:"M d, Y" }}</td>
+        <td>
+          {% if job.end_date %}
+            {{ job.end_date|date:"M d, Y" }}
+          {% else %}
+            <span class="text-muted">Present</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

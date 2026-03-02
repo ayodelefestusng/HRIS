@@ -1,0 +1,59 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0">
+          <h5>Course Catalog</h5>
+          <p class="text-sm">
+            Explore available training and upskilling opportunities.
+          </p>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            {% for course in courses %}
+            <div class="col-xl-3 col-md-6 mb-4">
+              <div class="card h-100 card-plain border">
+                <div class="card-body">
+                  <span class="badge bg-light text-dark mb-2"
+                    >{{ course.get_category_display }}</span
+                  >
+                  <h5>{{ course.title }}</h5>
+                  <p class="text-xs text-muted">
+                    {{ course.description|truncatewords:20 }}
+                  </p>
+
+                  {% if course.is_mandatory %}
+                  <span class="text-danger text-xs font-weight-bold">
+                    <i class="ni ni-bell-55"></i> Mandatory
+                  </span>
+                  {% endif %}
+
+                  <hr />
+                  <h6 class="text-sm">Upcoming Sessions:</h6>
+                  <ul class="list-unstyled">
+                    {% for session in course.sessions.all|slice:":3" %}
+                    <li class="mb-2">
+                      <a
+                        href="{% url 'development:training_session' session.pk %}"
+                        class="btn btn-xs btn-outline-primary w-100"
+                      >
+                        {{ session.start_date|date:"M d" }} ({{ session.location
+                        }})
+                      </a>
+                    </li>
+                    {% empty %}
+                    <li class="text-xs text-muted">No sessions scheduled.</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+<div class="offcanvas-header border-bottom {% if current_mode == 'manager' %}bg-slate-900 text-white{% endif %}">
+    <h5 class="offcanvas-title fw-bold">Attendance Detail</h5>
+    <button type="button" class="btn-close {% if current_mode == 'manager' %}btn-close-white{% endif %}" data-bs-dismiss="offcanvas"></button>
+</div>
+
+<div class="offcanvas-body {% if current_mode == 'manager' %}bg-slate-800 text-slate-200{% endif %}" id="offcanvas-body">
+    <div class="d-flex align-items-center mb-4">
+        <img src="{{ employee.avatar.url }}" class="rounded-circle me-3" width="48" height="48">
+        <div>
+            <h6 class="fw-bold mb-0">{{ employee.full_name }}</h6>
+            <span class="small text-muted">{{ log_date|date:"l, d M Y" }}</span>
+        </div>
+    </div>
+
+    <div class="alert {% if log.status == 'ABSENT' %}alert-danger{% elif log.status == 'LATE' %}alert-warning{% else %}alert-success{% endif %} border-0 py-2">
+        <strong>Status:</strong> {{ log.status|default:"NO RECORD" }}
+    </div>
+
+    <hr class="border-slate-700">
+
+    <form hx-post="{% url 'update_attendance_status' %}" hx-target="#task-grid" hx-swap="none">
+        <input type="hidden" name="log_id" value="{{ log.id }}">
+        
+        <div class="mb-3">
+            <label class="form-label small fw-bold">Change Status</label>
+            <select name="status" class="form-select bg-slate-900 border-slate-700 text-white">
+                <option value="PRESENT" {% if log.status == 'PRESENT' %}selected{% endif %}>Present</option>
+                <option value="EXCUSED" {% if log.status == 'EXCUSED' %}selected{% endif %}>Excused (Paid)</option>
+                <option value="ABSENT" {% if log.status == 'ABSENT' %}selected{% endif %}>Unexcused Absence</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small fw-bold">Manager Notes / Reason</label>
+            <textarea name="reason" class="form-control bg-slate-900 border-slate-700 text-white" rows="3" placeholder="e.g., Trapped in traffic, verified via WhatsApp...">{{ log.excusal_reason }}</textarea>
+        </div>
+
+        <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-outline-info" hx-get="{% url 'send_reminder' employee.id %}" hx-swap="none">
+                <i class="bi bi-send me-2"></i>Send "Where are you?" Email
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if log.gps_location %}
+<div class="mt-4">
+    <label class="form-label small fw-bold text-slate-400">Clock-in Location</label>
+    <div class="rounded bg-slate-900 p-2 d-flex align-items-center justify-content-between">
+        <span class="x-small text-truncate me-2">{{ log.gps_location }}</span>
+        <a href="https://www.google.com/maps/search/?api=1&query={{ log.gps_location }}" 
+           target="_blank" class="btn btn-xs btn-outline-primary py-0">
+           View Map
+        </a>
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,29 @@
+from django.contrib.auth.management.commands.createsuperuser import Command as BaseCreateSuperUserCommand
+from django.core.management.base import CommandError
+from org.models import Tenant
+
+class Command(BaseCreateSuperUserCommand):
+    help = "Create a superuser and prompt for tenant"
+
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+        parser.add_argument(
+            '--tenant',
+            type=int,
+            help='Tenant ID for the superuser'
+        )
+
+    def handle(self, *args, **options):
+        tenant_id = options.get('tenant')
+
+        if tenant_id is None:
+            # Prompt interactively if not provided
+            tenant_id = input("Tenant ID: ").strip()
+
+        try:
+            tenant = Tenant.objects.get(pk=tenant_id)
+        except Tenant.DoesNotExist:
+            raise CommandError(f"Tenant with ID {tenant_id} does not exist.")
+
+        options['tenant'] = tenant
+        super().handle(*args, **options)

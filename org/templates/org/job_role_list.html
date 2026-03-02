@@ -1,0 +1,41 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>Job Roles & Grades</h5>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th>Role Title</th>
+                  <th>Grade Level</th>
+                  <th>Salary Range</th>
+                  <th>Department</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for role in roles %}
+                <tr>
+                  <td>
+                    <h6 class="mb-0 text-sm">{{ role.title }}</h6>
+                  </td>
+                  <td>{{ role.grade.name }} ({{ role.grade.level }})</td>
+                  <td>
+                    {{ role.grade.min_salary }} - {{ role.grade.max_salary }}
+                  </td>
+                  <td>{{ role.department.name|default:"All" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

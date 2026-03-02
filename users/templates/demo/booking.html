@@ -1,0 +1,748 @@
+<!-- templates/demo/booking.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Book a Demo - Dignity Concept Limited{% endblock %}
+
+{% block meta_description %}
+Schedule a personalized demo with our experts to see how Dignity Concept can transform your business with AI and data analytics.
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .booking-hero {
+        background: linear-gradient(135deg, var(--primary-blue) 0%, #005A9E 100%);
+        color: white;
+    }
+    
+    .step-indicator {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .step-indicator .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+    
+    .step-indicator .step-number {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        border: 4px solid white;
+        transition: all 0.3s ease;
+    }
+    
+    .step-indicator .step.active .step-number {
+        background: var(--primary-blue);
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .step-indicator .step.completed .step-number {
+        background: var(--accent-green);
+        color: white;
+    }
+    
+    .step-indicator .step-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6c757d;
+        text-align: center;
+    }
+    
+    .step-indicator .step.active .step-label {
+        color: var(--primary-blue);
+        font-weight: 600;
+    }
+    
+    .step-indicator .connector {
+        position: absolute;
+        top: 25px;
+        left: 50%;
+        right: -50%;
+        height: 2px;
+        background: #e9ecef;
+        z-index: -1;
+    }
+    
+    .step-indicator .step:last-child .connector {
+        display: none;
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e9ecef;
+    }
+    
+    .interest-checkbox {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .interest-checkbox:hover {
+        border-color: var(--primary-blue);
+        background: #f8f9fa;
+    }
+    
+    .interest-checkbox.selected {
+        border-color: var(--primary-blue);
+        background: rgba(0, 114, 206, 0.05);
+    }
+    
+    .interest-checkbox .form-check-input {
+        margin-top: 0.25rem;
+    }
+    
+    .solution-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(0, 114, 206, 0.1);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    
+    .solution-icon i {
+        color: var(--primary-blue);
+    }
+    
+    .calendar-preview {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .calendar-icon {
+        font-size: 3rem;
+        color: var(--primary-blue);
+        margin-bottom: 1rem;
+    }
+    
+    .sticky-sidebar {
+        position: sticky;
+        top: 100px;
+    }
+    
+    .benefit-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid var(--primary-blue);
+    }
+    
+    @media (max-width: 768px) {
+        .step-indicator .step-number {
+            width: 40px;
+            height: 40px;
+            font-size: 0.875rem;
+        }
+        
+        .step-indicator .connector {
+            top: 20px;
+        }
+        
+        .form-section {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="booking-hero py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-white-50">Home</a></li>
+                        <li class="breadcrumb-item active text-white">Book a Demo</li>
+                    </ol>
+                </nav>
+                <h1 class="display-4 fw-bold mb-3">Schedule Your Personalized Demo</h1>
+                <p class="lead mb-4">Experience how our AI-powered solutions can transform your business in a 45-minute personalized session.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-light text-primary py-2 px-3">
+                        <i class="fas fa-clock me-1"></i>45 minutes
+                    </span>
+                    <span class="badge bg-light text-primary py-2 px-3">
+                        <i class="fas fa-video me-1"></i>Online meeting
+                    </span>
+                    <span class="badge bg-light text-primary py-2 px-3">
+                        <i class="fas fa-user-tie me-1"></i>Expert-led
+                    </span>
+                </div>
+            </div>
+            <div class="col-lg-4 text-center">
+                <div class="calendar-preview mt-4 mt-lg-0">
+                    <i class="fas fa-calendar-alt calendar-icon"></i>
+                    <h5>Ready When You Are</h5>
+                    <p class="text-muted mb-0">Schedule at your convenience</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Progress Indicator -->
+<section class="py-4 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="step-indicator d-flex justify-content-between position-relative">
+                    <div class="step active">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Your Details</div>
+                        <div class="connector"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Areas of Interest</div>
+                        <div class="connector"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Schedule & Confirm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Booking Form -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <!-- Main Form Column -->
+            <div class="col-lg-8">
+                <form method="post" id="demoBookingForm" novalidate>
+                    {% csrf_token %}
+                    
+                    <!-- Personal Information Section -->
+                    <div class="form-section">
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                                <i class="fas fa-user text-primary fa-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="h4 mb-1">Your Information</h3>
+                                <p class="text-muted mb-0">Tell us about yourself and your company</p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold">
+                                    First Name *
+                                </label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.first_name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label fw-semibold">
+                                    Last Name *
+                                </label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.last_name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                    Work Email *
+                                </label>
+                                {{ form.email }}
+                                <div class="form-text">We'll send the meeting details to this address</div>
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.email.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.phone.id_for_label }}" class="form-label fw-semibold">
+                                    Phone Number
+                                </label>
+                                {{ form.phone }}
+                                <div class="form-text">Optional - for urgent communications</div>
+                                {% if form.phone.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.phone.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.company.id_for_label }}" class="form-label fw-semibold">
+                                    Company *
+                                </label>
+                                {{ form.company }}
+                                {% if form.company.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.company.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.job_title.id_for_label }}" class="form-label fw-semibold">
+                                    Job Title *
+                                </label>
+                                {{ form.job_title }}
+                                {% if form.job_title.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.job_title.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.industry.id_for_label }}" class="form-label fw-semibold">
+                                Industry *
+                            </label>
+                            {{ form.industry }}
+                            {% if form.industry.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.industry.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Areas of Interest Section -->
+                    <div class="form-section">
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                                <i class="fas fa-star text-primary fa-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="h4 mb-1">Areas of Interest</h3>
+                                <p class="text-muted mb-0">What would you like to see in your demo? (Select at least one)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="interest-areas">
+                            {% for category in solution_categories %}
+                            <div class="category-group mb-4">
+                                <h5 class="fw-semibold mb-3 text-primary">{{ category.name }}</h5>
+                                <div class="row">
+                                    {% for solution in category.solution_set.all %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="interest-checkbox rounded-3" onclick="toggleCheckbox('solution_{{ solution.id }}')">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="interest_areas" 
+                                                       value="{{ solution.id }}" 
+                                                       id="solution_{{ solution.id }}">
+                                                <label class="form-check-label w-100" for="solution_{{ solution.id }}">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="solution-icon">
+                                                            <i class="{{ category.icon }}"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-semibold">{{ solution.title }}</div>
+                                                            <small class="text-muted">{{ solution.subtitle|truncatewords:8 }}</small>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.interest_areas.errors %}
+                            <div class="alert alert-danger">
+                                {{ form.interest_areas.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Scheduling Section -->
+                    <div class="form-section">
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                                <i class="fas fa-clock text-primary fa-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="h4 mb-1">Scheduling & Details</h3>
+                                <p class="text-muted mb-0">Choose your preferred time and share any specific requirements</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="{{ form.preferred_date.id_for_label }}" class="form-label fw-semibold">
+                                    Preferred Date & Time *
+                                </label>
+                                {{ form.preferred_date }}
+                                <div class="form-text">{{ form.preferred_date.help_text }}</div>
+                                {% if form.preferred_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.preferred_date.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <div class="bg-light rounded-3 p-3 h-100">
+                                    <h6 class="fw-semibold mb-2">Available Time Slots</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        <li class="mb-1"><small>🟢 Mon-Fri: 9:00 AM - 5:00 PM</small></li>
+                                        <li class="mb-1"><small>🔴 Weekends: Unavailable</small></li>
+                                        <li><small>⏰ Duration: 45 minutes</small></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.message.id_for_label }}" class="form-label fw-semibold">
+                                Additional Information
+                            </label>
+                            {{ form.message }}
+                            <div class="form-text">{{ form.message.help_text }}</div>
+                            <div class="mt-1 text-end">
+                                <small class="text-muted" id="charCount">0/1000 characters</small>
+                            </div>
+                        </div>
+
+                        <!-- Privacy and Communications -->
+                        <div class="privacy-section">
+                            <div class="form-check mb-3">
+                                {{ form.privacy_policy }}
+                                <label class="form-check-label fw-semibold" for="{{ form.privacy_policy.id_for_label }}">
+                                    I agree to the <a href="{% url 'privacy_policy' %}" target="_blank" class="text-decoration-none">Privacy Policy</a> 
+                                    and consent to Dignity Concept contacting me about this demo request. *
+                                </label>
+                                {% if form.privacy_policy.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.privacy_policy.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-check">
+                                {{ form.newsletter_subscription }}
+                                <label class="form-check-label" for="{{ form.newsletter_subscription.id_for_label }}">
+                                    {{ form.newsletter_subscription.label }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg py-3">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Schedule Your Demo
+                        </button>
+                        <p class="text-center text-muted mt-2 small">
+                            By scheduling, you confirm availability for the selected time slot
+                        </p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="sticky-sidebar">
+                    <!-- Benefits Card -->
+                    <div class="benefit-card">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="fas fa-gift text-primary me-2"></i>What to Expect
+                        </h5>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2 d-flex align-items-start">
+                                <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                <span>Personalized 45-minute session with our experts</span>
+                            </li>
+                            <li class="mb-2 d-flex align-items-start">
+                                <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                <span>Live platform demonstration tailored to your needs</span>
+                            </li>
+                            <li class="mb-2 d-flex align-items-start">
+                                <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                <span>Industry-specific use cases and ROI analysis</span>
+                            </li>
+                            <li class="mb-2 d-flex align-items-start">
+                                <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                <span>Q&A session with technical specialists</span>
+                            </li>
+                            <li class="d-flex align-items-start">
+                                <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                <span>Customized solution proposal and next steps</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Preparation Tips -->
+                    <div class="benefit-card">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="fas fa-lightbulb text-primary me-2"></i>Preparation Tips
+                        </h5>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2 d-flex align-items-start">
+                                <i class="fas fa-info-circle text-primary mt-1 me-2"></i>
+                                <span>Have your specific use cases ready</span>
+                            </li>
+                            <li class="mb-2 d-flex align-items-start">
+                                <i class="fas fa-info-circle text-primary mt-1 me-2"></i>
+                                <span>Prepare any questions about integration</span>
+                            </li>
+                            <li class="d-flex align-items-start">
+                                <i class="fas fa-info-circle text-primary mt-1 me-2"></i>
+                                <span>Think about your key business challenges</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="benefit-card bg-primary text-white">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="fas fa-headset me-2"></i>Need Immediate Assistance?
+                        </h5>
+                        <div class="contact-info">
+                            <p class="mb-2 d-flex align-items-center">
+                                <i class="fas fa-envelope me-2"></i>
+                                <a href="mailto:demos@dignityconcept.com" class="text-white text-decoration-none">
+                                    demos@dignityconcept.com
+                                </a>
+                            </p>
+                            <p class="mb-0 d-flex align-items-center">
+                                <i class="fas fa-phone me-2"></i>
+                                <a href="tel:+234123456789" class="text-white text-decoration-none">
+                                    +234 123 456 789
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Security Badge -->
+                    <div class="text-center mt-4">
+                        <div class="bg-light rounded-3 p-3">
+                            <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
+                            <h6 class="fw-semibold mb-1">Secure & Confidential</h6>
+                            <p class="small text-muted mb-0">
+                                Your information is protected by enterprise-grade security
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Success Stories Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="h3 fw-bold mb-3">Trusted by Industry Leaders</h2>
+                <p class="text-muted">Join hundreds of enterprises that have transformed their operations with our solutions</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 text-center mb-4">
+                <div class="bg-white rounded-3 p-4 h-100">
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-3 d-inline-flex mb-3">
+                        <i class="fas fa-chart-line text-primary fa-lg"></i>
+                    </div>
+                    <h5 class="fw-semibold">47%</h5>
+                    <p class="text-muted mb-0">Average increase in operational efficiency</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="bg-white rounded-3 p-4 h-100">
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-3 d-inline-flex mb-3">
+                        <i class="fas fa-clock text-primary fa-lg"></i>
+                    </div>
+                    <h5 class="fw-semibold">68%</h5>
+                    <p class="text-muted mb-0">Reduction in manual processing time</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="bg-white rounded-3 p-4 h-100">
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-3 d-inline-flex mb-3">
+                        <i class="fas fa-dollar-sign text-primary fa-lg"></i>
+                    </div>
+                    <h5 class="fw-semibold">3.2x</h5>
+                    <p class="text-muted mb-0">Average ROI within first year</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('demoBookingForm');
+    const messageInput = document.getElementById('{{ form.message.id_for_label }}');
+    const charCount = document.getElementById('charCount');
+    
+    // Real-time validation
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Character counter for message
+    if (messageInput && charCount) {
+        messageInput.addEventListener('input', function() {
+            const remaining = 1000 - this.value.length;
+            charCount.textContent = `${this.value.length}/1000 characters`;
+            
+            if (remaining < 100) {
+                charCount.classList.add('text-warning');
+            } else {
+                charCount.classList.remove('text-warning');
+            }
+        });
+        
+        // Initialize counter
+        charCount.textContent = `${messageInput.value.length}/1000 characters`;
+    }
+
+    // Date validation
+    const dateInput = document.getElementById('{{ form.preferred_date.id_for_label }}');
+    if (dateInput) {
+        // Set min date to today
+        const today = new Date();
+        const minDate = today.toISOString().slice(0, 16);
+        dateInput.min = minDate;
+        
+        dateInput.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const now = new Date();
+            
+            if (selectedDate < now) {
+                this.setCustomValidity('Please select a future date and time');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+    // Checkbox selection styling
+    const checkboxes = document.querySelectorAll('input[name="interest_areas"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const parent = this.closest('.interest-checkbox');
+            if (this.checked) {
+                parent.classList.add('selected');
+            } else {
+                parent.classList.remove('selected');
+            }
+        });
+        
+        // Initialize selected state
+        if (checkbox.checked) {
+            checkbox.closest('.interest-checkbox').classList.add('selected');
+        }
+    });
+});
+
+// Toggle checkbox and styling
+function toggleCheckbox(checkboxId) {
+    const checkbox = document.getElementById(checkboxId);
+    const parent = checkbox.closest('.interest-checkbox');
+    
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        parent.classList.add('selected');
+    } else {
+        parent.classList.remove('selected');
+    }
+    
+    // Trigger change event
+    checkbox.dispatchEvent(new Event('change'));
+}
+
+// Progress indicator update based on form completion
+function updateProgress() {
+    const steps = document.querySelectorAll('.step-indicator .step');
+    const formSections = document.querySelectorAll('.form-section');
+    let completedSections = 0;
+    
+    formSections.forEach(section => {
+        const inputs = section.querySelectorAll('input, select, textarea');
+        let sectionComplete = true;
+        
+        inputs.forEach(input => {
+            if (input.hasAttribute('required') && !input.value.trim()) {
+                sectionComplete = false;
+            }
+        });
+        
+        if (sectionComplete) {
+            completedSections++;
+        }
+    });
+    
+    steps.forEach((step, index) => {
+        step.classList.remove('active', 'completed');
+        if (index < completedSections) {
+            step.classList.add('completed');
+        } else if (index === completedSections) {
+            step.classList.add('active');
+        }
+    });
+}
+
+// Initialize progress tracking
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', updateProgress);
+        input.addEventListener('change', updateProgress);
+    });
+    
+    updateProgress(); // Initial update
+});
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-header">
+          <h5>Upload Document</h5>
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">Document Type</label>
+              <select name="document_type" class="form-control">
+                <option value="ID">Identity Proof</option>
+                <option value="CERT">Certificate</option>
+                <option value="CONTRACT">Contract</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">File</label>
+              <input type="file" name="file" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <input
+                type="text"
+                name="description"
+                class="form-control"
+                placeholder="e.g. Passport Copy"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Expiry Date (Optional)</label>
+              <input type="date" name="expiry_date" class="form-control" />
+            </div>
+
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

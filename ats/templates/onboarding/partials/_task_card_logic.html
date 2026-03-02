@@ -1,0 +1,19 @@
+<div class="card h-100 border-0 shadow-sm {% if task.rejection_reason %}border-start border-danger border-4{% endif %}">
+    <div class="card-body p-4">
+        <h6 class="fw-bold">{{ task.title }}</h6>
+        
+        {% if task.rejection_reason %}
+        <div class="bg-danger bg-opacity-10 text-danger p-2 rounded mb-3 small">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Fix Required:</strong> {{ task.rejection_reason }}
+        </div>
+        {% endif %}
+
+        <form hx-post="{% url 'upload_task_file' task.id %}" hx-encoding="multipart/form-data" hx-target="#task-grid">
+            <input type="file" name="uploaded_file" class="form-control form-control-sm mb-2" required>
+            <button type="submit" class="btn btn-sm btn-danger w-100">
+                Re-upload Document
+            </button>
+        </form>
+    </div>
+</div>

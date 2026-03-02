@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-warning border-0 shadow-sm mb-4">
+                <h6 class="alert-heading"><i class="fas fa-exclamation-circle"></i> Reason for Amendment</h6>
+                <hr>
+                {% with last_log=workflow_instance.history.last %}
+                    <p class="mb-0"><strong>{{ last_log.actor.full_name }}:</strong> "{{ last_log.action_description }}"</p>
+                {% endwith %}
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Amend {{ workflow_instance.workflow.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'workflow:inbox' %}" class="btn btn-light">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fas fa-paper-plane me-2"></i> Save Changes & Resubmit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

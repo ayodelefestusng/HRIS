@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>Candidate Search</h2>
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-10">
+                            <input type="text" name="q" class="form-control" placeholder="Search by name, email, or skill..." value="{{ request.GET.q }}">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for candidate in candidates %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar bg-gradient-light text-dark rounded-circle me-3">
+                            {{ candidate.full_name|first }}
+                        </div>
+                        <div>
+                            <h6 class="mb-0">{{ candidate.full_name }}</h6>
+                            <small class="text-muted">{{ candidate.email }}</small>
+                        </div>
+                    </div>
+                    <p class="text-xs text-secondary">
+                        <i class="ni ni-pin-3"></i> {{ candidate.preferred_location|default:"Any" }}
+                    </p>
+                    <a href="{% url 'ats:candidate_profile' candidate.pk %}" class="btn btn-sm btn-outline-dark w-100">View Profile</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center">
+            <p class="text-muted">No candidates found.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

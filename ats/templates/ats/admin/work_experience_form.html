@@ -1,0 +1,5 @@
+{% extends 'ats/admin/form_base.html' %}
+{% block title %}{{ form.instance.pk|yesno:"Edit Work Experience,Add Work Experience" }}{% endblock %}
+{% block content %}
+{{ block.super }}
+{% endblock %}

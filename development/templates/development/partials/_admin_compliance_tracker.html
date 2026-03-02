@@ -1,0 +1,31 @@
+<div class="admin-card p-4 bg-slate-900">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h6 class="text-white fw-bold mb-0">Mandatory Compliance Tracker</h6>
+        <span class="badge bg-primary">Tenant: {{ request.tenant.code }}</span>
+    </div>
+
+    <table class="table table-dark table-hover border-slate-800 small">
+        <thead>
+            <tr class="text-slate-500 x-small uppercase">
+                <th>Course Name</th>
+                <th>Enrolled</th>
+                <th>Completed</th>
+                <th>Progress</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in compliance_data %}
+            <tr>
+                <td class="text-white">{{ report.course_title }}</td>
+                <td>{{ report.total_enrolled }}</td>
+                <td>{{ report.total_completed }}</td>
+                <td style="width: 150px;">
+                    <div class="progress bg-slate-800" style="height: 4px;">
+                        <div class="progress-bar bg-success" style="width: {{ report.percent_complete }}%"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
