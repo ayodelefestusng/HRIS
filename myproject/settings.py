@@ -40,6 +40,8 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 CSRF_TRUSTED_ORIGINS = [f"https://{host.strip()}" for host in ALLOWED_HOSTS if host.strip()]
 
 
+
+
 # 3. Ensure cookies work over HTTPS (Since Easypanel uses SSL)
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
