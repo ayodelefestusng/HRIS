@@ -28,7 +28,21 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 # Application definition
+# 1. Allow the domain to serve the app
+ALLOWED_HOSTS = [
+    'whatsapp-1-vectra-app.xqqhik.easypanel.host', 
+    'localhost', 
+    '127.0.0.1',
+]
 
+# 2. Trust the origin for CSRF (This is the critical part for your error)
+CSRF_TRUSTED_ORIGINS = [
+    'https://whatsapp-1-vectra-app.xqqhik.easypanel.host'
+]
+
+# 3. Ensure cookies work over HTTPS (Since Easypanel uses SSL)
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
