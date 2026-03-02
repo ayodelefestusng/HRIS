@@ -26,14 +26,14 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 # Application definition
 # 1. Allow the domain to serve the app
-ALLOWED_HOSTS = [
-    'whatsapp-1-vectra-app.xqqhik.easypanel.host', 
-    'localhost', 
-    '127.0.0.1',
-]
+# ALLOWED_HOSTS = [
+#     'whatsapp-1-vectra-app.xqqhik.easypanel.host', 
+#     'localhost', 
+#     '127.0.0.1',
+# ]
 
 # 2. Trust the origin for CSRF (This is the critical part for your error)
 CSRF_TRUSTED_ORIGINS = [
