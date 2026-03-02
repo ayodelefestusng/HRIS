@@ -36,10 +36,8 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 # ]
 
 # 2. Trust the origin for CSRF (This is the critical part for your error)
-CSRF_TRUSTED_ORIGINS = [
-    'https://whatsapp-1-vectra-app.xqqhik.easypanel.host'
-]
-
+# This automatically turns your ALLOWED_HOSTS into trusted HTTPS origins
+CSRF_TRUSTED_ORIGINS = [f"https://{host.strip()}" for host in ALLOWED_HOSTS if host.strip()]
 # 3. Ensure cookies work over HTTPS (Since Easypanel uses SSL)
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
