@@ -18,7 +18,6 @@ from .views import (
     InternalDocumentDetailView,
     ReviewerEditView,
     internal_document_fields,
-    CRMPipelineView,
     ProcurementDashboardView,
 )
 
@@ -66,6 +65,5 @@ path('resubmit/<int:pk>/', WorkflowResubmitView.as_view(), name='resubmit_detail
     path('internal-document/<int:pk>/', InternalDocumentDetailView.as_view(), name='internal_document_detail'),
     path('internal-document/<int:pk>/edit/', ReviewerEditView.as_view(), name='reviewer_edit'),
     path('internal-document/fields/', internal_document_fields, name='internal_document_fields'),
-    path('crm/pipeline/', CRMPipelineView.as_view(), name='crm_pipeline'),
     path('procurement/dashboard/', ProcurementDashboardView.as_view(), name='procurement_dashboard'),
 ]

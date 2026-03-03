@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "benefits",
     "performance",
     "core",
+    "customer",
     
      "crispy_forms",
     "crispy_bootstrap5", 
@@ -283,6 +284,7 @@ APP_NAMES = [
     "talent",
     "workflow",
     "users",
+    "customer",
 ]
 
 LOGGING = {

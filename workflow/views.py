@@ -13,7 +13,7 @@ import logging
 from .forms import DelegationForm, InternalDocumentForm
 from .models import (
     WorkflowInstance, Delegation, Workflow, InternalDocument, 
-    Opportunity, Account, Contact, Vendor, Asset, ProcurementRequest
+    Vendor, Asset, ProcurementRequest
 )
 from workflow.services.workflow_service import WorkflowService
 from workflow.services.dashboard_service import WorkflowDashboardService
@@ -715,38 +715,7 @@ class ReviewerEditView(LoginRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse("workflow:inbox")
 
-class CRMPipelineView(LoginRequiredMixin, TemplateView):
-    template_name = "workflow/crm_pipeline.html"
 
-    def post(self, request, *args, **kwargs):
-        action = request.GET.get('action')
-        if action == 'move':
-            opp_id = request.GET.get('id')
-            to_stage = request.GET.get('to')
-            try:
-                opp = Opportunity.objects.get(pk=opp_id, tenant=request.user.tenant)
-                # Instead of immediate update, trigger workflow
-                opp.trigger_stage_transition(to_stage, request.user)
-            except Opportunity.DoesNotExist:
-                pass
-        return self.get(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        tenant = getattr(self.request.user, 'tenant', None)
-        
-        # Group opportunities by stage
-        stages = [choice[0] for choice in Opportunity.SALES_STAGE_CHOICES]
-        pipeline = {stage: [] for stage in stages}
-        
-        opportunities = Opportunity.objects.filter(tenant=tenant).select_related('account', 'owner')
-        for opp in opportunities:
-            if opp.stage in pipeline:
-                pipeline[opp.stage].append(opp)
-        
-        context['pipeline'] = pipeline
-        context['stage_choices'] = Opportunity.SALES_STAGE_CHOICES
-        return context
 
 class ProcurementDashboardView(LoginRequiredMixin, TemplateView):
     template_name = "workflow/procurement_dashboard.html"
