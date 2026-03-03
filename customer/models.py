@@ -1,8 +1,13 @@
+from datetime import datetime
+from xml.dom.minidom import Text
+
 from django.db import models
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 # from .models import Opportunity, Account, Contact
 from django.core.exceptions import ValidationError
+from regex import T
+from sqlalchemy import Column, Integer, String
 from org.models import Location   
 # Create your models here.
 # crm_core/models.py
@@ -30,7 +35,7 @@ class CRMUser(TenantModel):
     # Add CRM-specific fields here, e.g.
     title = models.CharField(max_length=100, blank=True)
     department = models.CharField(max_length=100, blank=True)
-    phone_extension = models.CharField(max_length=10, blank=True)
+    phone_extension = models.CharField(max_length=100, blank=True)
     is_sales_manager = models.BooleanField(default=False)
 
     # You could add a 'territory' field, or 'sales_quota', etc.
@@ -60,18 +65,18 @@ class Account(TenantModel):
         ('reseller', 'Reseller'),
     ]
 
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=100, unique=True)
     website = models.URLField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True)
-    industry = models.CharField(max_length=50, choices=INDUSTRY_CHOICES, blank=True)
-    account_type = models.CharField(max_length=50, choices=TYPE_CHOICES, blank=True)
+    phone = models.CharField(max_length=100, blank=True)
+    industry = models.CharField(max_length=100, choices=INDUSTRY_CHOICES, blank=True)
+    account_type = models.CharField(max_length=100, choices=TYPE_CHOICES, blank=True)
     description = models.TextField(blank=True)
     annual_revenue = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
     employees = models.IntegerField(blank=True, null=True)
-    address_street = models.CharField(max_length=255, blank=True)
+    address_street = models.CharField(max_length=200, blank=True)
     address_city = models.CharField(max_length=100, blank=True)
     address_state = models.CharField(max_length=100, blank=True)
-    address_zipcode = models.CharField(max_length=20, blank=True)
+    address_zipcode = models.CharField(max_length=100, blank=True)
     address_country = models.CharField(max_length=100, blank=True)
 
     # Salesforce-like audit fields
@@ -92,8 +97,8 @@ class Contact(TenantModel):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(blank=True, null=True, unique=True) # Unique if strict
-    phone = models.CharField(max_length=20, blank=True)
-    mobile = models.CharField(max_length=20, blank=True)
+    phone = models.CharField(max_length=100, blank=True)
+    mobile = models.CharField(max_length=100, blank=True)
     title = models.CharField(max_length=100, blank=True)
     department = models.CharField(max_length=100, blank=True)
     description = models.TextField(blank=True)
@@ -140,8 +145,8 @@ class Lead(TenantModel):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True)
-    company = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=100, blank=True)
+    company = models.CharField(max_length=100, blank=True)
     title = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=50, choices=LEAD_STATUS_CHOICES, default='new')
     source = models.CharField(max_length=50, choices=LEAD_SOURCE_CHOICES, blank=True)
@@ -184,7 +189,7 @@ class Opportunity(WorkflowCompatibleModel):
     
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     close_date = models.DateField()
-    stage = models.CharField(max_length=50, choices=SALES_STAGE_CHOICES, default='qualification')
+    stage = models.CharField(max_length=100, choices=SALES_STAGE_CHOICES, default='qualification')
     probability = models.IntegerField(choices=PROBABILITY_CHOICES, default=10) # Reflects sales stage
     description = models.TextField(blank=True)
     
@@ -281,8 +286,8 @@ class Customer(TenantModel):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=11, unique=True, validators=[validate_nigerian_prefix])
-    account_number = models.CharField(max_length=10, unique=True, validators=[validate_account_number])
+    phone_number = models.CharField(max_length=20, unique=True, validators=[validate_nigerian_prefix])
+    account_number = models.CharField(max_length=20, unique=True, validators=[validate_account_number])
 
     gender = models.CharField(max_length=10, choices=[("male", "Male"), ("female", "Female")])
     # city_of_residence = models.CharField(max_length=100)
@@ -324,12 +329,12 @@ class Transaction(TenantModel):
         ("mobile", "Mobile"),
     ]
 
-    transaction_id = models.CharField(max_length=30, unique=True)
+    transaction_id = models.CharField(max_length=100, unique=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    transaction_type = models.CharField(max_length=100, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    transaction_channel = models.CharField(max_length=10, choices=TRANSACTION_CHANNELS)
+    transaction_channel = models.CharField(max_length=100, choices=TRANSACTION_CHANNELS)
     timestamp = models.DateTimeField(auto_now_add=False)
     def __str__(self):
         return f"{self.transaction_type} via {self.transaction_channel} - {self.amount}"
@@ -359,3 +364,71 @@ class BranchPerformance(TenantModel):
     def __str__(self):
         return f"{self.branch.name} - {self.report_date}"                    
     
+
+
+
+class Prompt(TenantModel):
+    name = models.CharField(max_length=100, default="standard")
+    is_hum_agent_allow_prompt = models.TextField(blank=True, null=True)
+    no_hum_agent_allow_prompt = models.TextField(blank=True, null=True)
+    summary_prompt = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class LLM(TenantModel):
+    
+    name = models.CharField(max_length=100, null=False) # Ollama, Gemini
+    model = models.CharField(max_length=100, null=False)
+    # key = Column(String(255), nullable=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+
+class Tenant_AI(TenantModel):
+
+    prompt_template_id = models.IntegerField(null=True, blank=True)
+    
+    tenant_website = models.CharField(max_length=255, null=True, blank=True)
+    tenant_knowledge_base = models.CharField(max_length=255, null=True, blank=True)
+    tenant_text = models.TextField(null=True, blank=True)
+    tenant_document = models.TextField(null=True, blank=True)
+    
+    is_hum_agent_allow = models.BooleanField(default=True)
+    conf_level = models.IntegerField(default=40)
+    sentiment_threshold = models.FloatField(default=0.0)
+    ticket_type = models.JSONField(default=list)
+    message_tone = models.CharField(max_length=20, default='Professional')
+    
+    chatbot_greeting = models.TextField(default="How can I assist you today?")
+    agent_node_prompt = models.TextField(default="...", null=True, blank=True)
+    final_answer_prompt = models.TextField(null=True, blank=True)
+    summary_prompt = models.TextField(null=True, blank=True)
+    prompt_type = models.CharField(max_length=50, default="standard")
+    db_uri = models.CharField(max_length=512, null=True, blank=True)
+
+
+class Conversation(TenantModel):
+
+    session_id = models.CharField(max_length=255, unique=True, db_index=True)
+    started_at = models.DateTimeField(default=datetime.utcnow)
+    updated_at = models.DateTimeField(auto_now=True)
+    summary = models.TextField(null=True)
+    employee_id = models.CharField(max_length=255, null=True)
+    message_count = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    def __str__(self):
+        return f"Conversation {self.id} (Session: {self.session_id})"
+
+
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
+    text = models.TextField()
+    is_user = models.BooleanField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    attachment = models.FileField(upload_to='chat_attachments/', null=True, blank=True)
+
+    class Meta:
+        ordering = ['timestamp']
+    def __str__(self):
+        return f"{'User' if self.is_user else 'Bot'}: {self.text[:50]}..."
