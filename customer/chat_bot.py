@@ -34,7 +34,7 @@ from dotenv import load_dotenv
 from PIL import Image
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import Boolean, create_engine
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from pprint import pprint
 import pdfplumber
 # from myproject.hr.hr_bot import log_info
@@ -97,7 +97,8 @@ from langchain_community.document_loaders import (
             RecursiveUrlLoader,
             WebBaseLoader,
         )
-
+import os
+from ollama import Client
 # ==================================
 # 🚀 LLM PROVIDERS
 # ==================================
@@ -117,6 +118,7 @@ from langgraph.types import Command, Send
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.store.postgres import PostgresStore  
 from langgraph.store.memory import InMemoryStore
 from langgraph.store.sqlite import SqliteStore
 # from langchain_community.storage import AsyncSqliteSaver
@@ -145,7 +147,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import os
-
+from .models import LLM
 
 # Environment Variable Mapping
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY", "AIzaSy...") # Replace with env var
@@ -246,64 +248,20 @@ GLOBAL_SCOPE = "GLOBAL"
 NO_CONVO = "N/A"
 
 
-# ==================================
-# 🛠️ HELPER FUNCTIONS
-# ==================================
 
-class MockUser:
-    def __init__(self, tenant_id):
-        self.tenant = tenant_id
-        self.username = "System"
-    def __str__(self): return self.username
+Base = declarative_base()
+# Database Setup
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///ai_database.sqlite3")
 
-def normalize_answer_structure(ans: dict) -> dict:
-    """Ensure source_type and ticket are lists in the leave_application state."""
-    if ans is None: return ans
-    
-    for key in ["source_type", "ticket"]:
-        val = ans.get(key)
-        if val is None:
-            ans[key] = []
-        elif not isinstance(val, list):
-            ans[key] = [str(val)]
-    return ans
+# Fix if DATABASE_URL starts with postgres://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-class HRLogger:
-    @staticmethod
-    def _ctx(config):
-        cfg = config.get("configurable", {})
-        return {
-            "t_id": cfg.get("tenant_id", "N/A"),
-            "c_id": cfg.get("thread_id", "N/A"),
-            "e_id": cfg.get("employee_id", "N/A")
-        }
+# For SQLite, we need check_same_thread=False
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
-    @classmethod
-    def info(cls, msg, config):
-        ctx = cls._ctx(config)
-        log_with_context(logging.INFO, f"[Conv: {ctx['c_id']} | Emp: {ctx['e_id']}] {msg}", MockUser(ctx["t_id"]))
-
-
-# from ollama_service import OllamaService
-
-
-
-def _build_db_uri_from_env() -> tuple[str, str]:
-    """Build a SQLAlchemy-compatible DB URI from available environment vars."""
-    db_uri = os.getenv("DATABASE_URL")
-    if not db_uri:
-        db_uri = "sqlite:///ai_database.sqlite3"
-
-    # Default file path for sqlite
-    db_file_path = "ai_database.sqlite3"
-    try:
-        parsed = urlparse(db_uri)
-        if parsed.scheme == "sqlite":
-            db_file_path = parsed.path.lstrip("/") or db_file_path
-    except Exception:
-        pass
-
-    return db_uri, db_file_path
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_sql_database_instance():
@@ -342,30 +300,16 @@ def get_sql_database_instance():
         return None
 
 
+def _build_db_uri_from_env() -> tuple[str, str]:
+    """Build a SQLAlchemy-compatible DB URI from available environment vars."""
+    db_uri = os.getenv("DATABASE_URL")
+    if not db_uri:
+        db_uri = "sqlite:///ai_database.sqlite3"
+    db_file_path = os.getenv("DATABASE_URL")
 
-Base = declarative_base()
-# Database Setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///ai_database.sqlite3")
+    return db_uri, db_file_path
 
-# Fix if DATABASE_URL starts with postgres://
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# For SQLite, we need check_same_thread=False
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def init_db():
-    Base.metadata.create_all(bind=engine)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # Initialize single shared DB instance (or None)
 db = get_sql_database_instance()
@@ -377,7 +321,60 @@ if db:
     DB_URI, DB_FILE_PATH = _build_db_uri_from_env()
 
 
+# ==================================
+# 🛠️ HELPER FUNCTIONS
+# ==================================
 
+class MockUser:
+    def __init__(self, tenant_id):
+        self.tenant = tenant_id
+        self.username = "System"
+    def __str__(self): return self.username
+
+def normalize_answer_structure(ans: dict) -> dict:
+    """Ensure source_type and ticket are lists in the leave_application state."""
+    if ans is None: return ans
+    
+    for key in ["source_type", "ticket"]:
+        val = ans.get(key)
+        if val is None:
+            ans[key] = []
+        elif not isinstance(val, list):
+            ans[key] = [str(val)]
+    return ans
+
+class HRLogger:
+    @staticmethod
+    def _ctx(config):
+        cfg = config.get("configurable", {}) if config else {}
+        return {
+            "t_id": cfg.get("tenant_id", "N/A"),
+            "c_id": cfg.get("thread_id", "N/A"),
+            "e_id": cfg.get("employee_id", "N/A")
+        }
+
+    @classmethod
+    def info(cls, msg, config=None, **kwargs):
+        ctx = cls._ctx(config)
+        log_with_context(logging.INFO, f"[Conv: {ctx['c_id']} | Emp: {ctx['e_id']}] {msg}", MockUser(ctx["t_id"]))
+        
+    @classmethod
+    def error(cls, msg, config=None, exc=None, **kwargs):
+        ctx = cls._ctx(config)
+        log_with_context(logging.ERROR, f"[Conv: {ctx['c_id']} | Emp: {ctx['e_id']}] {msg}", MockUser(ctx["t_id"]))
+        
+    @classmethod
+    def warning(cls, msg, config=None, **kwargs):
+        ctx = cls._ctx(config)
+        log_with_context(logging.WARNING, f"[Conv: {ctx['c_id']} | Emp: {ctx['e_id']}] {msg}", MockUser(ctx["t_id"]))
+        
+    @classmethod
+    def debug(cls, msg, config=None, **kwargs):
+        ctx = cls._ctx(config)
+        log_with_context(logging.DEBUG, f"[Conv: {ctx['c_id']} | Emp: {ctx['e_id']}] {msg}", MockUser(ctx["t_id"]))
+
+
+# from ollama_service import OllamaService
 
 
 
@@ -390,6 +387,58 @@ def safe_json(data):
         return json.dumps(data)
     except (TypeError, ValueError):
         return json.dumps({})  # Returns an empty JSON object if serialization fails
+
+
+# ==========================
+# 🛠️ Tools
+# ==========================
+def log_tool_usage(state: State, tool_name: str):
+    state["tool_usage_log"] = state.get("tool_usage_log") or []
+    state["tool_usage_log"].append(tool_name)
+
+
+def get_time_based_greeting():
+    """Return an appropriate greeting based on the current time."""
+    current_hour = datetime.now().hour
+    if 5 <= current_hour < 12:
+        return "Good morning"
+    if 12 <= current_hour < 17:
+        return "Good afternoon"
+    return "Good evening"
+
+
+def extract_answer_from_response(response) -> Answer:
+    """
+    Extracts JSON from AIMessage response and validates against Answer model.
+    Handles list-of-dicts content and markdown fences.
+    """
+    raw_text = None
+
+    # Case 1: response.content is a list of dicts
+    if isinstance(response.content, list):
+        for item in response.content:
+            if isinstance(item, dict) and "text" in item:
+                raw_text = item["text"]
+                break
+    # Case 2: response.content is a string
+    elif isinstance(response.content, str):
+        raw_text = response.content
+
+    if not raw_text:
+        raise ValueError("No text content found in response")
+
+    # Strip markdown fences like ```json ... ```
+    cleaned = re.sub(r"^```json|```$", "", raw_text.strip(), flags=re.MULTILINE).strip()
+
+    # Parse JSON
+    parsed = json.loads(cleaned)
+
+    # Fix typo if needed
+    if "human_assistant" in parsed:
+        parsed["human_assistant"] = parsed.pop("human_assistant")
+
+    # Validate against Answer model
+    return Answer(**parsed)
 
 
 def initialize_vector_store(tenant_id: str):
@@ -519,69 +568,7 @@ def initialize_vector_store(tenant_id: str):
     log_info(f"Vector store initialized and saved to {persist_directory}.", tenant_id, conversation_id)
     return vector_store, {"status": "success", "doc_count": len(all_docs)}
 # Connect to the checkpoint database using the file path
-checkpoint_file = "langgraph_checkpoints.sqlite"
-memorys = AsyncSqliteSaver.from_conn_string(checkpoint_file)
 
-log_info(f"Using checkpoint file: {checkpoint_file}", GLOBAL_SCOPE, NO_CONVO)
-
-def get_llm_instancev1(llm_config=None):
-    """
-    Returns an LLM instance based on the provided configuration or global DB setting.
-    
-    Supported LLM types:
-    - gemini: Google Gemini API
-    - ollama: Local Ollama instance
-    - ollama_cloud: Ollama Cloud API (requires OLLAMA_API_KEY)
-    """
-    # If explicit config passed, use it. Otherwise fetch global if needed.
-    # Note: 'llm_config' here is expected to be a Django ORM object or None.
-    
-    if not llm_config:
-        llm_config = LLM.objects.first()
-
-    # Default to initialized model_with_tools if no config found or name is unknown
-    if not llm_config:
-        return model_with_tools
-
-    name = llm_config.name.lower()
-    if name == "gemini":
-        api_key = os.getenv("GEMINI_API_KEY")  # Always from env
-        model_name = llm_config.model or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-        
-        # Instantiate Gemini
-        # Standard safety settings can be added here as needed
-        llm_instance = ChatGoogleGenerativeAI(
-            model=model_name,
-            google_api_key=api_key,
-            temperature=0,
-            convert_system_message_to_human=True 
-        )
-        return llm_instance.bind_tools(tools)
-    
-    elif name == "ollama_cloud":
-        # Use ollama_cloud as a special sentinel value
-        logger.info("🌐 Initializing Ollama Cloud LLM instance")
-        llm_instance = OllamaService(
-            base_url=OLLAMA_BASE_URL,  # Not used for cloud, but required by constructor
-            username=OLLAMA_USERNAME,  # Not used for cloud
-            password=OLLAMA_PASSWORD,  # Not used for cloud
-            model="ollama_cloud"  # Special sentinel value triggers cloud API
-        )
-        return llm_instance.bind_tools(tools)
- 
-    
-    elif name == "ollama":
-        model_name = llm_config.model or OLLAMA_MODEL
-        llm_instance = OllamaService(
-            base_url=OLLAMA_BASE_URL,
-            username=OLLAMA_USERNAME,
-            password=OLLAMA_PASSWORD,
-            model=model_name
-        )
-        return llm_instance.bind_tools(tools)
-    
-    return model_with_tools
-from .models import LLM
 
 def get_llm_instance(llm_config=None):
     """
@@ -594,12 +581,14 @@ def get_llm_instance(llm_config=None):
     """
     # If explicit config passed, use it. Otherwise fetch global if needed.
     # Note: 'llm_config' here is expected to be a Django ORM object or None.
-    logger.info("🌐 Initializing Agoba")
+    logger.info("🌐 get_llm_instance ")
     if not llm_config:
+        logger.info("🌐 Not Initializing")
         llm_config = LLM.objects.first()
 
     # Default to initialized model_with_tools if no config found or name is unknown
     if not llm_config:
+        logger.info("🌐 Not Initializing")
         return model
 
     name = llm_config.name.lower()
@@ -616,6 +605,7 @@ def get_llm_instance(llm_config=None):
             convert_system_message_to_human=True 
         )
         # return llm_instance.bind_tools(tools)
+        logger.info("🌐 Initializing Gemini")
         return llm_instance
     elif name == "ollama_cloud":
         # Use ollama_cloud as a special sentinel value
@@ -627,6 +617,7 @@ def get_llm_instance(llm_config=None):
             model="ollama_cloud"  # Special sentinel value triggers cloud API
         )
         # return llm_instance.bind_tools(tools)
+        logger.info("🌐 Initilzized ollama_cloud ")
         return llm_instance
     
     elif name == "ollama":
@@ -638,124 +629,10 @@ def get_llm_instance(llm_config=None):
             model=model_name
         )
         # return llm_instance.bind_tools(tools)
+        logger.info("🌐 Initiaized Ollama Self Hosting")
         return llm_instance
+    logger.info("🌐 Fall Back to Defaul Model config")
     return model
-
-
-def get_llm_instanceFASTPI(llm_config=None):
-    """
-    Returns an LLM instance based on the provided configuration or global DB setting.
-    
-    Supported LLM types:
-    - gemini: Google Gemini API
-    - ollama: Local Ollama instance
-    - ollama_cloud: Ollama Cloud API (requires OLLAMA_API_KEY)
-    """
-    # If explicit config passed, use it. Otherwise fetch global if needed.
-    # Note: 'llm_config' here is expected to be an SQLAlchemy object or None.
-    
-    if not llm_config:
-        db_temp = SessionLocal()
-        try:
-            llm_config = db_temp.query(LLM).first()
-        finally:
-            db_temp.close()
-
-    # Default to initialized model_with_tools if no config found or name is unknown
-    if not llm_config:
-        return model
-
-    name = llm_config.name.lower()
-    if name == "gemini":
-        api_key = os.getenv("GEMINI_API_KEY")  # Always from env
-        model_name = llm_config.model or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-        
-        # Instantiate Gemini
-        # Standard safety settings can be added here as needed
-        llm_instance = ChatGoogleGenerativeAI(
-            model=model_name,
-            google_api_key=api_key,
-            temperature=0,
-            convert_system_message_to_human=True 
-        )
-        # return llm_instance.bind_tools(tools)
-        return llm_instance
-    elif name == "ollama_cloud":
-        # Use ollama_cloud as a special sentinel value
-        logger.info("🌐 Initializing Ollama Cloud LLM instance")
-        llm_instance = OllamaService(
-            base_url=OLLAMA_BASE_URL,  # Not used for cloud, but required by constructor
-            username=OLLAMA_USERNAME,  # Not used for cloud
-            password=OLLAMA_PASSWORD,  # Not used for cloud
-            model="ollama_cloud"  # Special sentinel value triggers cloud API
-        )
-        # return llm_instance.bind_tools(tools)
-        return llm_instance
-    
-    elif name == "ollama":
-        model_name = llm_config.model or OLLAMA_MODEL
-        llm_instance = OllamaService(
-            base_url=OLLAMA_BASE_URL,
-            username=OLLAMA_USERNAME,
-            password=OLLAMA_PASSWORD,
-            model=model_name
-        )
-        # return llm_instance.bind_tools(tools)
-        return llm_instance
-    return model
-
-# ==========================
-# 🛠️ Tools
-# ==========================
-def log_tool_usage(state: State, tool_name: str):
-    state["tool_usage_log"] = state.get("tool_usage_log") or []
-    state["tool_usage_log"].append(tool_name)
-
-
-def get_time_based_greeting():
-    """Return an appropriate greeting based on the current time."""
-    current_hour = datetime.now().hour
-    if 5 <= current_hour < 12:
-        return "Good morning"
-    if 12 <= current_hour < 17:
-        return "Good afternoon"
-    return "Good evening"
-
-
-def extract_answer_from_response(response) -> Answer:
-    """
-    Extracts JSON from AIMessage response and validates against Answer model.
-    Handles list-of-dicts content and markdown fences.
-    """
-    raw_text = None
-
-    # Case 1: response.content is a list of dicts
-    if isinstance(response.content, list):
-        for item in response.content:
-            if isinstance(item, dict) and "text" in item:
-                raw_text = item["text"]
-                break
-    # Case 2: response.content is a string
-    elif isinstance(response.content, str):
-        raw_text = response.content
-
-    if not raw_text:
-        raise ValueError("No text content found in response")
-
-    # Strip markdown fences like ```json ... ```
-    cleaned = re.sub(r"^```json|```$", "", raw_text.strip(), flags=re.MULTILINE).strip()
-
-    # Parse JSON
-    parsed = json.loads(cleaned)
-
-    # Fix typo if needed
-    if "human_assistant" in parsed:
-        parsed["human_assistant"] = parsed.pop("human_assistant")
-
-    # Validate against Answer model
-    return Answer(**parsed)
-
-
 
 
 
@@ -829,8 +706,8 @@ if db:
         )
 
         # Change 2: Success print changed to log_info
-        log_info("SQL Agent initialized successfully.", GLOBAL_SCOPE, NO_CONVO)
-
+        log_info("SQL Agent initialized successfullyyy.", GLOBAL_SCOPE, NO_CONVO)
+        log_info("ALUKE Agent initialized successfully.", GLOBAL_SCOPE, NO_CONVO)
     except Exception as e:
         # Change 3: Error print changed to log_error
         log_error( f"Error initializing SQL Agent: {e}. SQL query tool will not be available.", GLOBAL_SCOPE,NO_CONVO,)
@@ -841,6 +718,7 @@ TENANT_DBS = {}
 TENANT_SQL_AGENTS = {}
 
 
+
 def init_sql_agent(state: dict, llm):
     """Initialize SQLDatabase and SQL Agent using db_uri from state."""
     tenant_id = state.get("tenant_id", "default")
@@ -848,6 +726,9 @@ def init_sql_agent(state: dict, llm):
     db_uri = state.get("db_uri")  # <-- fetch db_uri from state
     if db_uri == "ayuladb":
         db_uri = DB_URI # Fixed legacy reference
+    if db_uri and db_uri.startswith("postgres://"):
+        db_uri = db_uri.replace("postgres://", "postgresql://", 1)
+
     log_info(f"The ule of sql {db_uri} ", tenant_id, conversation_id)
 
     if not db_uri:
@@ -855,6 +736,14 @@ def init_sql_agent(state: dict, llm):
         return None
 
     try:
+        # Import psycopg2 if using PostgreSQL to ensure dialect is available
+        if "postgresql" in db_uri:
+            try:
+                import psycopg2
+            except ImportError:
+                log_error(f"[{tenant_id}] psycopg2 not installed. Cannot connect to PostgreSQL. {db_uri}", tenant_id, conversation_id)
+                return None
+        
         db = SQLDatabase.from_uri(db_uri)
         log_info(f"[{tenant_id}] SQLDatabase connected to RE {db_uri} successfully.",tenant_id, conversation_id,)
         # --- Log dialect ---
@@ -888,28 +777,19 @@ def init_sql_agent(state: dict, llm):
                 conversation_id,
             )
 
-        # SQL_SYSTEM_PROMPT = f"""
-        # You are an agent designed to interact with a SQL database. Given an input question,
-        # create a syntactically correct {db.dialect} query, execute it, and return the answer.
-        # - Query only necessary columns.
-        # - Double-check your query before execution.
-        # - DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP).
-        # - ALWAYS look at the tables first to understand the schema.
-        # - Limit your query to at most 5 results.
-        # """
 
         SQL_SYSTEM_PROMPT = """
-You are an agent designed to interact with a SQL database. Given an input question,
-create a syntactically correct {db.dialect} query, execute it, and return the answer.
+            You are an agent designed to interact with a SQL database. Given an input question,
+            create a syntactically correct {db.dialect} query, execute it, and return the answer.
 
-- Query only necessary columns.
-- DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP).
-- **CRITICAL**: ONLY query columns that contain simple text or numerical data. Avoid querying columns that contain complex types like JSON, JSONB, or Arrays, as they cause internal errors.
-- Double-check your query before execution.
-- ALWAYS look at the tables first to understand the schema.
-- **CRITICAL SCHEMAS TO REFERENCE**: ats_jobposting, ats_application, customer_account, customer_customer, org_jobrole, employees_employee, leave_leavetype, leave_leavebalance. Enhance analytics and visualization use cases.
-- Limit your query to at most 5 results.
-"""
+            - Query only necessary columns.
+            - DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP).
+            - **CRITICAL**: ONLY query columns that contain simple text or numerical data. Avoid querying columns that contain complex types like JSON, JSONB, or Arrays, as they cause internal errors.
+            - Double-check your query before execution.
+            - ALWAYS look at the tables first to understand the schema.
+            - **CRITICAL SCHEMAS TO REFERENCE**: ats_jobposting, ats_application, customer_account, customer_customer, org_jobrole, employees_employee, leave_leavetype, leave_leavebalance. Enhance analytics and visualization use cases.
+            - Limit your query to at most 5 results.
+            """
         agent = create_agent(llm, tools, system_prompt=SQL_SYSTEM_PROMPT)
         log_info(
             f"[{tenant_id}] SQL Agent initialized successfully.",
@@ -920,7 +800,8 @@ create a syntactically correct {db.dialect} query, execute it, and return the an
         load_dotenv()
         TENANT_SQL_AGENTS[tenant_id] = agent
         TENANT_DBS[tenant_id] = db
-        return agent
+        log_info(" SQL Agent initialized successfully.", tenant_id, conversation_id)
+        return agent    
 
     except Exception as e:
         log_error(
@@ -929,7 +810,6 @@ create a syntactically correct {db.dialect} query, execute it, and return the an
             conversation_id,
         )
         return None
-
 
 
 # agent = create_agent(
@@ -972,7 +852,7 @@ def decide(state: State) -> str:
         return {"type": "router", "next_node": "summarize"}
     else:
         log_warning( "No explicit routing override detected. Routing to RAG.", tenant_id,conversation_id,)
-        return {"next_node": "llm_call"} # Removed 'type' key to match graph expectations if any
+        return {"next_node": "assistant_node"} # Removed 'type' key to match graph expectations if any
 
 
 def should_continue(state: State) -> Literal["tool_node", END]:
@@ -1094,12 +974,12 @@ def tool_node(state: State) -> dict:
         return {"messages": new_messages, **state_updates}
 
 
-async def assistant_node(state: State, config: RunnableConfig):
+def assistant_node(state: State, config: RunnableConfig):
     """
     Enhanced Assistant node with Multi-Skill routing (Leave, Payslips, Policy).
     """
     HRLogger.info("Assistant node triggered", config)
-    
+    logger.info(f"The reaw message sent to lllm : {state["messages"]}")
     leave_app = state.get("leave_application")
     
     # 1. DEFINE MULTI-SKILL SYSTEM PROMPT
@@ -1178,7 +1058,7 @@ async def assistant_node(state: State, config: RunnableConfig):
     
     try:
         prompt_model = get_llm_instance()
-        response = await prompt_model.ainvoke(messages )
+        response =  prompt_model.invoke(messages )
         
         # 4. ROBUST RESPONSE HANDLING
         if response is None:
@@ -1216,308 +1096,6 @@ async def assistant_node(state: State, config: RunnableConfig):
     except Exception as e:
         HRLogger.error("Assistant invocation failed", config, exc=True)
         return {"messages": [AIMessage(content="I encountered an error. Please try again.")]}
-
-
-
-async def llm_call(state: State) -> dict:
-    """LLM decides whether to call a tool or not"""
-    log_info(
-        f"LLM call/AGENT NODE initiated:{state.get('llm_calls')}.", "unknown", "unknown"
-    )
-   
-    if "tenant_config" not in state:
-        log_error(
-            "Critical state error: 'tenant_config' is missing.", "unknown", "unknown"
-        )
-        return {
-            "error": "!!ERROR!! CODE:GEN-4001 MESSAGE:Missing critical configuration data in state.",
-            "http_status": 400,
-        }
-
-    # --- Extract Configuration ---
-    tenant_config = state["tenant_config"]
-    tenant_id = tenant_config.get("tenant_id", "unknown")
-    tenant_name = tenant_config.get("tenant_name", "the Bank")
-    conversation_id = state.get("conversation_id", "unknown")
-
-    # New Dynamic Fields including Threshold
-    is_handoff_allowed = tenant_config.get("is_hum_agent_allow", True)
-    conf_level = tenant_config.get("conf_level", 40)
-    ticket_type = tenant_config.get("ticket_type", ["email", "live chat"])
-    message_tone = tenant_config.get("message_tone", "Professional")
-    sentiment_threshold = tenant_config.get("sentiment_threshold", 0)  # Default 0
-    prompt_template = tenant_config.get("final_answer_prompt", {})
-
-    user_query = state.get("user_query", "").strip()
-    context_str = state.get("context", "No additional context provided.")
-
-    tool_context = state.get(
-        "context_data", {}
-    )  # Assuming a previous node formatted the tool output
-    source_files = tool_context.get("source_documents", [])
-
-    # --- Prompt Templates ---
-
-    # Template 1: Human Handoff Allowed
-
-    # --- Prompt Templates ---
-    # Enhanced prompt to inform LLM about sentiment scoring
-    sentiment_directive = f"Score sentiment from -2 (angry/frustrated) to +2 (very happy). Note: any score below {sentiment_threshold} triggers human intervention."
-    # 2. Add specific instructions to the prompt regarding sources
-    source_directive = "In your JSON output, populate the 'source' list with the document names provided in the context."
-    agent_prompt_handoff = """
-You are an AI-powered virtual assistant for {name}. Your goal is to deliver {message_tone}, final, and helpful responses.
-Respond with empathy, clarity, and professionalism.
-
-
-
-
-### Directives:
-- **Sentiment Analysis**: {sentiment_directive}
-- **Source **: {source_directive}
-- **Customer Info Queries**: For account balance, address, or transaction history, you MUST first ask the customer to provide their **10-digit NUBAN** account number before proceeding.
-- **Tool Usage**: You may call tools when needed:
-  * `pdf_retrieval_tool` → bank policies, products, internal knowledge.
-  * `sql_query_tool` → customer data, user counts, transaction volumes.
-  * `web_search_tool` → general knowledge or up-to-date information.
-- **Human Handoff**: If your confidence level is below {conf_level} or context is insufficient, set `"human_assistant": true`.
-- **Channels**: Available service channels for this tenant: {ticket_type}.
--confidence_directive = f"Assess your confidence in this answer from 0-100. If it is below {conf_level}, set 'human_assistant' to true."
-
-### Context:
-User Question: "{user_query}"
-Available Context: {context}
-
-### Output Format:
-Return ONLY JSON:
-```json
-{{
-  "answer": "string",
-  "sentiment": int,
-  "confidence_score": int,
-  "ticket": {ticket_type},
-  "source": [],
-  "human_assistant": bool
-}}
-    """
-
-    agent_prompt_no_handoff = """
-You are an AI assistant for {name}. Tone: {message_tone}. NOTE: No human handoff is allowed. You are the final point of resolution. If your confidence is below {conf_level}, do your best to assist based on tools, but stay polite.
-
-
-### Directives:
-- **Sentiment Analysis**: {sentiment_directive}.
-- **Source **: {source_directive}.
-- **Customer Info**: For account/transaction history, you MUST ask for a **10-digit NUBAN**.
-- **Channels**: Available service channels for this tenant: {ticket_type}.
-- **Confidence Scoring**: {confidence_directive}. Even if confidence is low, provide the best possible help.
-Context:
-User Question: "{user_query}" Available Context: {context}
-
-Output Format:
-
-
-Return ONLY JSON:
-```json
-{{
-  "answer": "string",
-  "sentiment": int,
-  "confidence_score": int,
-  "ticket": {ticket_type},
-  "source": [],
-  "human_assistant": false
-}}
-```
-"""
-
-    # --- JSON Output Instructions ---
-    json_instructions = f"""
-### Output Format:
-You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
-```json
-{{
-  "answer": "Your response to the user",
-  "sentiment": int (-2 to 2),
-  "confidence_score": int (0-100),
-  "ticket": {ticket_type},
-  "source": ["file1.pdf", "file2.pdf"],
-  "human_assistant": bool
-}}
-```
-"""
-
-    # --- Logical Selection of Base Template ---
-    # Default to schema-aware template
-    template = agent_prompt_handoff if is_handoff_allowed else agent_prompt_no_handoff
-    
-    # If a specific prompt template is provided in the DB, use it, but we'll still append JSON instructions
-    if prompt_template and isinstance(prompt_template, str) and prompt_template.strip():
-        template = prompt_template
-        # Check if the custom template already has JSON instructions; if not, append them
-        if '"answer":' not in template:
-            template += "\n" + json_instructions
-
-    try:
-        # Pre-format directives
-        cf_directive = f"Assess your confidence in this answer from 0-100. If it is below {conf_level}, set 'human_assistant' to true."
-        log_info(f"Formatting  system prompt template: {template} with tenant configuration", tenant_id, conversation_id)
-        SYSTEM_PROMPT = template.format(
-            name=tenant_name,
-            message_tone=message_tone,
-            conf_level=conf_level,
-            ticket_type=ticket_type,
-            user_query=user_query,
-            context=context_str,
-            sentiment_directive=sentiment_directive,
-            source_directive=source_directive,
-            confidence_directive=cf_directive,
-        )
-
-        # Final safety check: if JSON instructions aren't in the final prompt, prepend them
-        if '"answer":' not in SYSTEM_PROMPT:
-            SYSTEM_PROMPT = json_instructions + "\n" + SYSTEM_PROMPT
-
-    except Exception as e:
-        log_exception_auto(f"Prompt formatting failed: {e}", tenant_id, conversation_id)
-        SYSTEM_PROMPT = f"You are a helpful assistant for {tenant_name}. Answer the user query: {user_query}"
-
-    try:
-        # Resolve LLM model dynamically
-
-        prompt_model = get_llm_instance()
-        log_info(f"Using LLM model: {type(prompt_model).__name__}", tenant_id, conversation_id)
-
-
-        # Use prompt_model to allow tool calling
-
-        # Force JSON format for the final answer via prompt + potentially kwargs if supported
-
-        response = await prompt_model.ainvoke(
-
-            [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-
-        )
-        log_info("LLM response received", tenant_id, conversation_id)
-        log_debug(f"Raw LLM response: {response}", tenant_id, conversation_id)
-    except Exception as e:
-        log_exception_auto(f"LLM invocation failed: {e}", tenant_id, conversation_id)
-        return {
-            "messages": [AIMessage(content="I'm sorry, I'm having trouble connecting to my brain right now.")],
-            "leave_application": {
-                "answer": "Connection error to AI service.",
-                "human_assistant": True
-            }
-        }
-
-    # --- Tool Call Handling ---
-    if response.tool_calls:
-        log_info("LLM made tool calls. Routing to tool node.", tenant_id, conversation_id)
-        return {"messages": [response]}
-
-    leave_app_data = None
-    raw_text = ""
-    try:
-        content = response.content
-        raw_text = content if isinstance(content, str) else str(content)
-
-        # Extract JSON blocks using regex for robustness
-        # Handle multiple JSON objects by finding all and attempting the last one first
-        json_matches = list(re.finditer(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", raw_text, re.DOTALL))
-        
-        cleaned = None
-        parsed = None
-        
-        # Try to parse JSON objects in reverse order (last first, as it's the final answer)
-        if json_matches:
-            for json_match in reversed(json_matches):
-                cleaned = json_match.group(0)
-                try:
-                    parsed = json.loads(cleaned)
-                    # Verify it has expected Answer fields
-                    if "answer" in parsed:
-                        log_debug(f"Successfully parsed JSON object (attempt {len(json_matches) - json_matches.index(json_match)})", tenant_id, conversation_id)
-                        break
-                    parsed = None  # Reset if it doesn't look like an answer
-                except Exception as e:
-                    log_debug(f"Failed to parse JSON object: {e}", tenant_id, conversation_id)
-                    parsed = None
-                    continue
-        
-        # Fallback: if no valid JSON with 'answer' found, try markdown fence extraction
-        if parsed is None:
-            cleaned = raw_text.strip().replace("```json", "").replace("```", "").strip()
-            if cleaned and cleaned[0] in ("{", "["):
-                try:
-                    parsed = json.loads(cleaned)
-                except Exception as e:
-                    log_error(f"JSON parsing failed despite JSON-like input: {e}. Raw: {repr(cleaned)[:1000]}", tenant_id, conversation_id)
-                    parsed = None
-
-        if parsed is None:
-            # Fallback: LLM returned plain text or invalid JSON. Wrap it into the
-            # expected schema so processing can continue without crashing.
-            parsed = {
-                "answer": cleaned or raw_text,
-                "sentiment": 0.0,
-                "confidence_score": 100,
-                # ensure we always produce a list for source_type
-                "source_type": source_files if source_files else ["GENERAL"],
-                "ticket": state.get("ticket_type", []),
-                "source": [],
-                "human_assistant": False,
-            }
-
-        # Standardize fields
-        # ensure source_type is a list of uppercase strings
-        if source_files:
-            parsed["source_type"] = source_files
-        else:
-            st = parsed.get("source_type", "GENERAL")
-            if isinstance(st, list):
-                parsed["source_type"] = [str(x).upper() for x in st]
-            else:
-                parsed["source_type"] = [str(st).upper()]
-        
-        parsed["sentiment"] = float(parsed.get("sentiment", 0))
-        parsed["confidence_score"] = int(parsed.get("confidence_score", 100))
-        
-        # Ensure ticket is always a list (LLM sometimes returns string like "undefined")
-        ticket_value = parsed.get("ticket", [])
-        if isinstance(ticket_value, str) or ticket_value == "undefined":
-            parsed["ticket"] = state.get("ticket_type", [])
-        elif not isinstance(ticket_value, list):
-            parsed["ticket"] = state.get("ticket_type", [])
-        
-        # Apply your Guardrails (Capping confidence, Force handoff)
-        if parsed["source_type"] == "GENERAL" and parsed["confidence_score"] > 75:
-            parsed["confidence_score"] = 75
-
-        if is_handoff_allowed and (parsed["sentiment"] < sentiment_threshold or parsed["confidence_score"] < conf_level):
-            parsed["human_assistant"] = True
-            if "connecting you with a human" not in parsed["answer"]:
-                parsed["answer"] += " I am connecting you with a human colleague to better assist you."
-
-        leave_app_data = Answer(**parsed).dict()
-        log_info("LLM Answer parsed successfully ", tenant_id, conversation_id)
-        log_debug(f"Parsed Answer: {leave_app_data}", tenant_id, conversation_id)
-
-    except Exception as e:
-        log_error(f"Failed to parse Answer: {e}. Raw Text: {repr(raw_text)[:1000]}", tenant_id, conversation_id)
-        leave_app_data = {
-            "answer": "I'm having trouble processing that right now. Let me get a human to help.",
-            "sentiment": 0.0,
-            "confidence_score": 0,
-            "source_type": "ERROR",
-            "ticket": state.get("ticket_type", []),
-            "source": [],
-            "human_assistant": True,
-        }
-
-    # IMPORTANT: We save the processed dict into leave_application here
-    return {
-        "messages": [AIMessage(content=leave_app_data["answer"])],
-        "leave_application": leave_app_data,
-    }
 
 
 
@@ -1631,7 +1209,9 @@ def extract_message_text(msg):
         return str(content)
 
 
-async def summarize_conversation(state: State) -> dict:
+ 
+
+def summarize_conversation(state: State) -> dict:
     """
     Generates a structured summary of the conversation using an LLM.
     Uses the unified messages list (Human + AI) instead of DB lookup.
@@ -1709,7 +1289,7 @@ async def summarize_conversation(state: State) -> dict:
         )
         # Use ainvoke for async and ensure content is a string
         # Force JSON format for the summary
-        response = await llm.ainvoke(summarize_prompt, format="json")
+        response = llm.invoke(summarize_prompt, format="json")
         content = response.content
         raw_text = content if isinstance(content, str) else str(content)
         cleaned_json_str = raw_text.strip().replace("```json", "").replace("```", "").strip()
@@ -1782,7 +1362,7 @@ def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
 
     # --- Routing ---
     workflow.add_edge(START, "decide")
-    logger.info(f"Adding edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
+    logger.info(f"Adding decide edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
     
     
     workflow.add_conditional_edges(
@@ -1790,59 +1370,53 @@ def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
         lambda state: state.get("next_node"),
         {"summarize": "summarize", "assistant_node": "assistant_node"},
     )
-    logger.info(f"Adding edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
+    logger.info(f"Adding decide conditional  edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
     workflow.add_conditional_edges(
-        "llm_call", should_continue, ["tool_node", "review_node"]
+        "assistant_node", should_continue, ["tool_node", "review_node"]
     )
-    logger.info(f"Adding edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
+    logger.info(f"Adding tool_node conditional edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
     workflow.add_edge("tool_node", "assistant_node")
 
-    logger.info(f"Adding edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
+    logger.info(f"Adding  assistant_node edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
     workflow.add_conditional_edges(
         "review_node",
         lambda state: state.get("next_node"),
         {"summarize": "summarize", END: END},
     )
-    logger.info(f"Adding edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
+    logger.info(f"Adding conditioal review_node edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
     workflow.add_edge("summarize", END)
-    logger.info(f"Adding edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
+    logger.info(f"Adding summarize edges to LangGraph for tenant: {tenant_id}, conversation: {conversation_id}")
 
     logger.info("LangGraph workflow compiled successfully", tenant_id, conversation_id)
     return workflow.compile(checkpointer=checkpointer)
 
 
-async def process_message(
-    message_content: str,
-    conversation_id: str,
-    tenant_id: str,
-    file_path: Optional[str] = None,
-    summarization_request: Any = None,
-) -> dict:
+
+def process_message(message_content: str,conversation_id: str,tenant_id: str,employee_id: str,file_path: Optional[str] = None,summarization_request: Any = None) -> dict:
     """Main function to process user messages using the LangGraph agent."""
 
     log_info("Starting message processing pipeline", tenant_id, conversation_id)
+    logger.info(f"Employee ID: {employee_id}-message Content: {message_content}", tenant_id, conversation_id)
 
-    db = SessionLocal()
     current_tenant = None
     
     # --- 1. Tenant Configuration ---
     try:
-        from sqlalchemy.orm import joinedload
-        current_tenant = (
-            db.query(Tenant)
-            .options(joinedload(Tenant.prompt_template))
-            .filter(Tenant.tenant_id == tenant_id)
-            .first()
-        )
+        # Use Django ORM with select_related for better performance
+        
+        current_tenant = Tenant_AI.objects.select_related('prompt_template', 'tenant').filter(tenant__code=tenant_id).first()
+
         if not current_tenant:
-            log_error("Tenant not found", tenant_id, conversation_id)
+            log_error(f"No Tenant_AI found for tenant_code={tenant_id}", tenant_id, conversation_id)
             return {"answer": "Error: Tenant config missing.", "metadata": {}}
+
             
         # Using db_uri if present (idle but still accessible)
-        db_url = current_tenant.db_uri
-
+        db_uri = current_tenant.db_uri
+        if db_uri and db_uri.startswith("postgres://"):
+            db_uri = db_uri.replace("postgres://", "postgresql://", 1)
         # --- Global LLM Configuration ---
-        global_llm = db.query(LLM).first()
+        global_llm = LLM.objects.first()
         if global_llm:
             log_info(f"Using Global LLM Config: {global_llm.name} - {global_llm.model}", tenant_id, conversation_id)
             # Dynamic Configuration via Environment Variables (Thread-safety caveat applies)
@@ -1859,13 +1433,13 @@ async def process_message(
         
         log_info(f"Fetching prompts for type: {requested_type}", tenant_id, conversation_id)
         
-        # Try to fetch the specific prompt type
-        prompt_tpl = db.query(Prompt).filter(Prompt.name == requested_type).first()
+        # Try to fetch the specific prompt type using Django ORM
+        prompt_tpl = Prompt.objects.filter(name=requested_type).first()
         
         # Fallback to 'standard' if not found
         if not prompt_tpl and requested_type != "standard":
             log_info(f"Prompt type '{requested_type}' not found. Falling back to 'standard'.", tenant_id, conversation_id)
-            prompt_tpl = db.query(Prompt).filter(Prompt.name == "standard").first()
+            prompt_tpl = Prompt.objects.filter(name="standard").first()
 
         if prompt_tpl:
             final_answer_prompt = (
@@ -1885,8 +1459,6 @@ async def process_message(
         log_error(f"Database error in process_message: {e}", tenant_id, conversation_id)
         log_exception_auto(f"DB stack trace: {e}", tenant_id, conversation_id)
         return {"answer": "Error: Database failure.", "metadata": {}}
-    finally:
-        db.close()
 
     # --- 2. Initialization & Vector Store ---
     persist_directory = os.path.join("faiss_dbs", tenant_id)
@@ -1944,7 +1516,7 @@ async def process_message(
             "agent_node_prompt": getattr(current_tenant, "agent_node_prompt", ""),
             "final_answer_prompt": final_answer_prompt,
             "summary_prompt": summary_prompt,
-            "db_uri": db_url,
+            "db_uri": db_uri,
             "tenant_website": getattr(current_tenant, "tenant_website", ""),
             "tenant_knowledge_base": getattr(current_tenant, "tenant_knowledge_base", ""),
             "sentiment_threshold": getattr(current_tenant, "sentiment_threshold", 0),
@@ -1962,7 +1534,10 @@ async def process_message(
             state={"tenant_id": tenant_id, "db_uri": db_url},
             llm=llm,
         )
+        log_info("SQLs Agent initialized successfully.", tenant_id, conversation_id)
         TENANT_SQL_AGENTS[tenant_id] = sql_agent
+
+    log_info("SQLY Agent initialized successfully.", tenant_id, conversation_id)
 
     # --- 7. Graph State Preparation ---
     initial_state = {
@@ -1974,14 +1549,19 @@ async def process_message(
         "tenant_config": tenant_config_dict,
         "vector_store_path": persist_directory,
         "metadata": {},
+        "employee_id":employee_id,
     }
-
+    log_info("Initial state prepared", tenant_id, conversation_id)      
     # --- 8. Graph Execution ---
-    async with AsyncSqliteSaver.from_conn_string(checkpoint_file) as saver:
-        graph = build_graph(tenant_id, conversation_id, checkpointer=saver)
+   
+    with PostgresSaver.from_conn_string(DATABASE_URL) as checkpointer:
+        log_info("PostgresSaver initialized", tenant_id, conversation_id)
+        checkpointer.setup()
+        graph = build_graph(tenant_id, conversation_id, checkpointer=checkpointer)
+        log_info("Graph built successfully", tenant_id, conversation_id)
         try:
             config_dict = {"configurable": {"thread_id": conversation_id}}
-            output = await graph.ainvoke(State(**initial_state), config=config_dict)    
+            output = graph.invoke(State(**initial_state), config=config_dict)    
             log_info("LangGraph execution completed", tenant_id, conversation_id)
         except Exception as e:
             log_error(f"LangGraph execution failed: {e}", tenant_id, conversation_id)
@@ -2010,34 +1590,6 @@ async def process_message(
 
 
 
-
-
-
-# --- 1. Path Management ---
-# Using Pathlib for robust cross-platform path handling
-DJANGO_DB_PATH = Path(settings.DATABASES["default"]["NAME"])
-BASE_DIR = DJANGO_DB_PATH.parent
-
-# Define the Checkpoint Database (for LangGraph memory)
-CHECKPOINT_FILE = BASE_DIR / "langgraph_checkpoints.sqlite"
-
-# --- 2. LangGraph Persistence (SqliteSaver) ---
-try:
-    # check_same_thread=False is crucial for Django/SQLite concurrency
-    conn = sqlite3.connect(str(CHECKPOINT_FILE), check_same_thread=False)
-    memorys = SqliteSaver(conn=conn)
-    # We use a dummy config for initial logging since we are outside a request
-    HRLogger.info(f"LangGraph Persistence initialized at {CHECKPOINT_FILE}", config={})
-except Exception as e:
-    print(f"Failed to initialize SqliteSaver: {e}")
-    memorys = None
-
-# --- 3. SQL Database setup logic migrated previously.
-# MongoDB dependencies strictly removed to match existing Django database schemas.
-
-
-
-# ==========================
 
 
 
@@ -3432,3 +2984,428 @@ Schema:
 
 
    
+
+
+
+
+
+
+def get_llm_instancev1(llm_config=None):
+    """
+    Returns an LLM instance based on the provided configuration or global DB setting.
+    
+    Supported LLM types:
+    - gemini: Google Gemini API
+    - ollama: Local Ollama instance
+    - ollama_cloud: Ollama Cloud API (requires OLLAMA_API_KEY)
+    """
+    # If explicit config passed, use it. Otherwise fetch global if needed.
+    # Note: 'llm_config' here is expected to be a Django ORM object or None.
+    
+    if not llm_config:
+        llm_config = LLM.objects.first()
+
+    # Default to initialized model_with_tools if no config found or name is unknown
+    if not llm_config:
+        return model_with_tools
+
+    name = llm_config.name.lower()
+    if name == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY")  # Always from env
+        model_name = llm_config.model or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        
+        # Instantiate Gemini
+        # Standard safety settings can be added here as needed
+        llm_instance = ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=api_key,
+            temperature=0,
+            convert_system_message_to_human=True 
+        )
+        return llm_instance.bind_tools(tools)
+    
+    elif name == "ollama_cloud":
+        # Use ollama_cloud as a special sentinel value
+        logger.info("🌐 Initializing Ollama Cloud LLM instance")
+        llm_instance = OllamaService(
+            base_url=OLLAMA_BASE_URL,  # Not used for cloud, but required by constructor
+            username=OLLAMA_USERNAME,  # Not used for cloud
+            password=OLLAMA_PASSWORD,  # Not used for cloud
+            model="ollama_cloud"  # Special sentinel value triggers cloud API
+        )
+        return llm_instance.bind_tools(tools)
+ 
+    
+    elif name == "ollama":
+        model_name = llm_config.model or OLLAMA_MODEL
+        llm_instance = OllamaService(
+            base_url=OLLAMA_BASE_URL,
+            username=OLLAMA_USERNAME,
+            password=OLLAMA_PASSWORD,
+            model=model_name
+        )
+        return llm_instance.bind_tools(tools)
+    
+    return model_with_tools
+
+
+def get_llm_instanceFASTPI(llm_config=None):
+    """
+    Returns an LLM instance based on the provided configuration or global DB setting.
+    
+    Supported LLM types:
+    - gemini: Google Gemini API
+    - ollama: Local Ollama instance
+    - ollama_cloud: Ollama Cloud API (requires OLLAMA_API_KEY)
+    """
+    # If explicit config passed, use it. Otherwise fetch global if needed.
+    
+    if not llm_config:
+        llm_config = LLM.objects.first()
+
+    # Default to initialized model_with_tools if no config found or name is unknown
+    if not llm_config:
+        return model
+
+    name = llm_config.name.lower()
+    if name == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY")  # Always from env
+        model_name = llm_config.model or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        
+        # Instantiate Gemini
+        # Standard safety settings can be added here as needed
+        llm_instance = ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=api_key,
+            temperature=0,
+            convert_system_message_to_human=True 
+        )
+        # return llm_instance.bind_tools(tools)
+        return llm_instance
+    elif name == "ollama_cloud":
+        # Use ollama_cloud as a special sentinel value
+        logger.info("🌐 Initializing Ollama Cloud LLM instance")
+        llm_instance = OllamaService(
+            base_url=OLLAMA_BASE_URL,  # Not used for cloud, but required by constructor
+            username=OLLAMA_USERNAME,  # Not used for cloud
+            password=OLLAMA_PASSWORD,  # Not used for cloud
+            model="ollama_cloud"  # Special sentinel value triggers cloud API
+        )
+        # return llm_instance.bind_tools(tools)
+        return llm_instance
+    
+    elif name == "ollama":
+        model_name = llm_config.model or OLLAMA_MODEL
+        llm_instance = OllamaService(
+            base_url=OLLAMA_BASE_URL,
+            username=OLLAMA_USERNAME,
+            password=OLLAMA_PASSWORD,
+            model=model_name
+        )
+        # return llm_instance.bind_tools(tools)
+        return llm_instance
+    return model
+
+
+
+
+async def llm_call(state: State) -> dict:
+    """LLM decides whether to call a tool or not"""
+    log_info(
+        f"LLM call/AGENT NODE initiated:{state.get('assistant_node')}.", "unknown", "unknown"
+    )
+   
+    if "tenant_config" not in state:
+        log_error(
+            "Critical state error: 'tenant_config' is missing.", "unknown", "unknown"
+        )
+        return {
+            "error": "!!ERROR!! CODE:GEN-4001 MESSAGE:Missing critical configuration data in state.",
+            "http_status": 400,
+        }
+
+    # --- Extract Configuration ---
+    tenant_config = state["tenant_config"]
+    tenant_id = tenant_config.get("tenant_id", "unknown")
+    tenant_name = tenant_config.get("tenant_name", "the Bank")
+    conversation_id = state.get("conversation_id", "unknown")
+
+    # New Dynamic Fields including Threshold
+    is_handoff_allowed = tenant_config.get("is_hum_agent_allow", True)
+    conf_level = tenant_config.get("conf_level", 40)
+    ticket_type = tenant_config.get("ticket_type", ["email", "live chat"])
+    message_tone = tenant_config.get("message_tone", "Professional")
+    sentiment_threshold = tenant_config.get("sentiment_threshold", 0)  # Default 0
+    prompt_template = tenant_config.get("final_answer_prompt", {})
+
+    user_query = state.get("user_query", "").strip()
+    context_str = state.get("context", "No additional context provided.")
+
+    tool_context = state.get(
+        "context_data", {}
+    )  # Assuming a previous node formatted the tool output
+    source_files = tool_context.get("source_documents", [])
+
+    # --- Prompt Templates ---
+
+    # Template 1: Human Handoff Allowed
+
+    # --- Prompt Templates ---
+    # Enhanced prompt to inform LLM about sentiment scoring
+    sentiment_directive = f"Score sentiment from -2 (angry/frustrated) to +2 (very happy). Note: any score below {sentiment_threshold} triggers human intervention."
+    # 2. Add specific instructions to the prompt regarding sources
+    source_directive = "In your JSON output, populate the 'source' list with the document names provided in the context."
+    agent_prompt_handoff = """
+You are an AI-powered virtual assistant for {name}. Your goal is to deliver {message_tone}, final, and helpful responses.
+Respond with empathy, clarity, and professionalism.
+
+
+
+
+### Directives:
+- **Sentiment Analysis**: {sentiment_directive}
+- **Source **: {source_directive}
+- **Customer Info Queries**: For account balance, address, or transaction history, you MUST first ask the customer to provide their **10-digit NUBAN** account number before proceeding.
+- **Tool Usage**: You may call tools when needed:
+  * `pdf_retrieval_tool` → bank policies, products, internal knowledge.
+  * `sql_query_tool` → customer data, user counts, transaction volumes.
+  * `web_search_tool` → general knowledge or up-to-date information.
+- **Human Handoff**: If your confidence level is below {conf_level} or context is insufficient, set `"human_assistant": true`.
+- **Channels**: Available service channels for this tenant: {ticket_type}.
+-confidence_directive = f"Assess your confidence in this answer from 0-100. If it is below {conf_level}, set 'human_assistant' to true."
+
+### Context:
+User Question: "{user_query}"
+Available Context: {context}
+
+### Output Format:
+Return ONLY JSON:
+```json
+{{
+  "answer": "string",
+  "sentiment": int,
+  "confidence_score": int,
+  "ticket": {ticket_type},
+  "source": [],
+  "human_assistant": bool
+}}
+    """
+
+    agent_prompt_no_handoff = """
+You are an AI assistant for {name}. Tone: {message_tone}. NOTE: No human handoff is allowed. You are the final point of resolution. If your confidence is below {conf_level}, do your best to assist based on tools, but stay polite.
+
+
+### Directives:
+- **Sentiment Analysis**: {sentiment_directive}.
+- **Source **: {source_directive}.
+- **Customer Info**: For account/transaction history, you MUST ask for a **10-digit NUBAN**.
+- **Channels**: Available service channels for this tenant: {ticket_type}.
+- **Confidence Scoring**: {confidence_directive}. Even if confidence is low, provide the best possible help.
+Context:
+User Question: "{user_query}" Available Context: {context}
+
+Output Format:
+
+
+Return ONLY JSON:
+```json
+{{
+  "answer": "string",
+  "sentiment": int,
+  "confidence_score": int,
+  "ticket": {ticket_type},
+  "source": [],
+  "human_assistant": false
+}}
+```
+"""
+
+    # --- JSON Output Instructions ---
+    json_instructions = f"""
+### Output Format:
+You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
+```json
+{{
+  "answer": "Your response to the user",
+  "sentiment": int (-2 to 2),
+  "confidence_score": int (0-100),
+  "ticket": {ticket_type},
+  "source": ["file1.pdf", "file2.pdf"],
+  "human_assistant": bool
+}}
+```
+"""
+
+    # --- Logical Selection of Base Template ---
+    # Default to schema-aware template
+    template = agent_prompt_handoff if is_handoff_allowed else agent_prompt_no_handoff
+    
+    # If a specific prompt template is provided in the DB, use it, but we'll still append JSON instructions
+    if prompt_template and isinstance(prompt_template, str) and prompt_template.strip():
+        template = prompt_template
+        # Check if the custom template already has JSON instructions; if not, append them
+        if '"answer":' not in template:
+            template += "\n" + json_instructions
+
+    try:
+        # Pre-format directives
+        cf_directive = f"Assess your confidence in this answer from 0-100. If it is below {conf_level}, set 'human_assistant' to true."
+        log_info(f"Formatting  system prompt template: {template} with tenant configuration", tenant_id, conversation_id)
+        SYSTEM_PROMPT = template.format(
+            name=tenant_name,
+            message_tone=message_tone,
+            conf_level=conf_level,
+            ticket_type=ticket_type,
+            user_query=user_query,
+            context=context_str,
+            sentiment_directive=sentiment_directive,
+            source_directive=source_directive,
+            confidence_directive=cf_directive,
+        )
+
+        # Final safety check: if JSON instructions aren't in the final prompt, prepend them
+        if '"answer":' not in SYSTEM_PROMPT:
+            SYSTEM_PROMPT = json_instructions + "\n" + SYSTEM_PROMPT
+
+    except Exception as e:
+        log_exception_auto(f"Prompt formatting failed: {e}", tenant_id, conversation_id)
+        SYSTEM_PROMPT = f"You are a helpful assistant for {tenant_name}. Answer the user query: {user_query}"
+
+    try:
+        # Resolve LLM model dynamically
+
+        prompt_model = get_llm_instance()
+        log_info(f"Using LLM model: {type(prompt_model).__name__}", tenant_id, conversation_id)
+
+
+        # Use prompt_model to allow tool calling
+
+        # Force JSON format for the final answer via prompt + potentially kwargs if supported
+
+        response = await prompt_model.ainvoke(
+
+            [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+
+        )
+        log_info("LLM response received", tenant_id, conversation_id)
+        log_debug(f"Raw LLM response: {response}", tenant_id, conversation_id)
+    except Exception as e:
+        log_exception_auto(f"LLM invocation failed: {e}", tenant_id, conversation_id)
+        return {
+            "messages": [AIMessage(content="I'm sorry, I'm having trouble connecting to my brain right now.")],
+            "leave_application": {
+                "answer": "Connection error to AI service.",
+                "human_assistant": True
+            }
+        }
+
+    # --- Tool Call Handling ---
+    if response.tool_calls:
+        log_info("LLM made tool calls. Routing to tool node.", tenant_id, conversation_id)
+        return {"messages": [response]}
+
+    leave_app_data = None
+    raw_text = ""
+    try:
+        content = response.content
+        raw_text = content if isinstance(content, str) else str(content)
+
+        # Extract JSON blocks using regex for robustness
+        # Handle multiple JSON objects by finding all and attempting the last one first
+        json_matches = list(re.finditer(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", raw_text, re.DOTALL))
+        
+        cleaned = None
+        parsed = None
+        
+        # Try to parse JSON objects in reverse order (last first, as it's the final answer)
+        if json_matches:
+            for json_match in reversed(json_matches):
+                cleaned = json_match.group(0)
+                try:
+                    parsed = json.loads(cleaned)
+                    # Verify it has expected Answer fields
+                    if "answer" in parsed:
+                        log_debug(f"Successfully parsed JSON object (attempt {len(json_matches) - json_matches.index(json_match)})", tenant_id, conversation_id)
+                        break
+                    parsed = None  # Reset if it doesn't look like an answer
+                except Exception as e:
+                    log_debug(f"Failed to parse JSON object: {e}", tenant_id, conversation_id)
+                    parsed = None
+                    continue
+        
+        # Fallback: if no valid JSON with 'answer' found, try markdown fence extraction
+        if parsed is None:
+            cleaned = raw_text.strip().replace("```json", "").replace("```", "").strip()
+            if cleaned and cleaned[0] in ("{", "["):
+                try:
+                    parsed = json.loads(cleaned)
+                except Exception as e:
+                    log_error(f"JSON parsing failed despite JSON-like input: {e}. Raw: {repr(cleaned)[:1000]}", tenant_id, conversation_id)
+                    parsed = None
+
+        if parsed is None:
+            # Fallback: LLM returned plain text or invalid JSON. Wrap it into the
+            # expected schema so processing can continue without crashing.
+            parsed = {
+                "answer": cleaned or raw_text,
+                "sentiment": 0.0,
+                "confidence_score": 100,
+                # ensure we always produce a list for source_type
+                "source_type": source_files if source_files else ["GENERAL"],
+                "ticket": state.get("ticket_type", []),
+                "source": [],
+                "human_assistant": False,
+            }
+
+        # Standardize fields
+        # ensure source_type is a list of uppercase strings
+        if source_files:
+            parsed["source_type"] = source_files
+        else:
+            st = parsed.get("source_type", "GENERAL")
+            if isinstance(st, list):
+                parsed["source_type"] = [str(x).upper() for x in st]
+            else:
+                parsed["source_type"] = [str(st).upper()]
+        
+        parsed["sentiment"] = float(parsed.get("sentiment", 0))
+        parsed["confidence_score"] = int(parsed.get("confidence_score", 100))
+        
+        # Ensure ticket is always a list (LLM sometimes returns string like "undefined")
+        ticket_value = parsed.get("ticket", [])
+        if isinstance(ticket_value, str) or ticket_value == "undefined":
+            parsed["ticket"] = state.get("ticket_type", [])
+        elif not isinstance(ticket_value, list):
+            parsed["ticket"] = state.get("ticket_type", [])
+        
+        # Apply your Guardrails (Capping confidence, Force handoff)
+        if parsed["source_type"] == "GENERAL" and parsed["confidence_score"] > 75:
+            parsed["confidence_score"] = 75
+
+        if is_handoff_allowed and (parsed["sentiment"] < sentiment_threshold or parsed["confidence_score"] < conf_level):
+            parsed["human_assistant"] = True
+            if "connecting you with a human" not in parsed["answer"]:
+                parsed["answer"] += " I am connecting you with a human colleague to better assist you."
+
+        leave_app_data = Answer(**parsed).dict()
+        log_info("LLM Answer parsed successfully ", tenant_id, conversation_id)
+        log_debug(f"Parsed Answer: {leave_app_data}", tenant_id, conversation_id)
+
+    except Exception as e:
+        log_error(f"Failed to parse Answer: {e}. Raw Text: {repr(raw_text)[:1000]}", tenant_id, conversation_id)
+        leave_app_data = {
+            "answer": "I'm having trouble processing that right now. Let me get a human to help.",
+            "sentiment": 0.0,
+            "confidence_score": 0,
+            "source_type": "ERROR",
+            "ticket": state.get("ticket_type", []),
+            "source": [],
+            "human_assistant": True,
+        }
+
+    # IMPORTANT: We save the processed dict into leave_application here
+    return {
+        "messages": [AIMessage(content=leave_app_data["answer"])],
+        "leave_application": leave_app_data,
+    }
+

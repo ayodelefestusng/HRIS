@@ -384,6 +384,10 @@ class LLM(TenantModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def __str__(self):
+     return f"{self.name} - {self.model}"
+
+    
 
 class Tenant_AI(TenantModel):
 
@@ -406,6 +410,10 @@ class Tenant_AI(TenantModel):
     summary_prompt = models.TextField(null=True, blank=True)
     prompt_type = models.CharField(max_length=50, default="standard")
     db_uri = models.CharField(max_length=512, null=True, blank=True)
+    
+    def __str__(self):
+        tenant_code = self.tenant.code if self.tenant else "Unknown"
+        return f"{tenant_code} - {self.prompt_type}"
 
 
 class Conversation(TenantModel):

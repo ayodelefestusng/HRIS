@@ -171,15 +171,33 @@ class TenantDetailView(View):
 
 
 class ChatView(View):
-    async def post(self, request):
+    def post(self, request):
+        
         try:
             logger.info("ChatView POST called")
 
-            message_content = request.POST.get("message_content")
-            conversation_id = request.POST.get("conversation_id")
-            tenant_id = request.POST.get("tenant_id")
-            summarization_request = request.POST.get("summarization_request") == 'true'
-            user_msg_attach = request.FILES.get("user_msg_attach")
+            if request.content_type == 'application/json':
+                try:
+                    data = json.loads(request.body)
+                    logger.info(f"Received JSON data: {data}")
+                except json.JSONDecodeError:
+                    data = {}
+                message_content = data.get("message_content") or data.get("message") or ""
+                conversation_id = data.get("conversation_id")
+                tenant_id = data.get("tenant_id")
+                summarization_request = data.get("summarization_request") == True
+                user_msg_attach = None
+                employee_id=data.get("employee_id","ayodelefes@gmail.com")
+
+            else:
+                logger.info("Received non-JSON data")
+                logger.info(f"POST data: {request.POST}")
+                message_content = request.POST.get("message_content") or request.POST.get("message") or ""
+                conversation_id = request.POST.get("conversation_id")
+                tenant_id = request.POST.get("tenant_id")
+                summarization_request = request.POST.get("summarization_request") == 'true'
+                user_msg_attach = request.FILES.get("user_msg_attach")
+                employee_id=request.POST.get("employee_id","obinna.kelechi.adewale@dignityconcept.tech")
 
             # get_or_create_global_llm()
             get_llm_instance()
@@ -190,14 +208,17 @@ class ChatView(View):
                 path = f"chat_attachments/{user_msg_attach.name}"
                 file_path = default_storage.save(path, ContentFile(user_msg_attach.read()))
                 # default_storage returns the final path (handles name collisions)
-
+         
             # Call your async processing logic
-            response = await process_message(
+            response = process_message(
                 message_content=message_content,
                 conversation_id=conversation_id,
                 tenant_id=tenant_id,
+                 employee_id=employee_id,
                 file_path=file_path,
                 summarization_request=summarization_request
+               
+              
             )
             return JsonResponse(response)
 
