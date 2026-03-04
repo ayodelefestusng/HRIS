@@ -48,6 +48,7 @@ urlpatterns = [
     path("benefits/", include("benefits.urls")),
     path("performance/", include("performance.urls")),
     path("core/", include(("core.urls", "core"), namespace="core")),
+    path("customer/", include("customer.urls")),
 ]
 urlpatterns += [ path("linkedin/login/", linkedin_login, name="linkedin_login"),
                 path("linkedin/callback/", linkedin_callback, name="linkedin_callback"),

@@ -186,3 +186,4 @@ xxhash==3.6.0
 yarg==0.1.10
 yarl==1.22.0
 zstandard==0.25.0
+langgraph-checkpoint-postgres

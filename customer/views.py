@@ -1,10 +1,152 @@
-from django.shortcuts import render
+import json
+import os
+import logging
+from django.http import JsonResponse
+from django.views import View
+from django.db import transaction
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import TemplateView
+from .models import Tenant_AI, Prompt,Opportunity  # Assuming your models are in models.py
 
-# Create your views here.
-from .models import (
+logger = logging.getLogger(__name__)
+from .chat_bot import get_llm_instance
+from .chat_bot import initialize_vector_store,process_message
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
-    Opportunity, Account, Contact
-)
+@method_decorator(csrf_exempt, name='dispatch')
+class OnboardTenantView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            logger.info("Onboard View Called")
+            
+            # --- Trigger Global LLM Check/Creation ---
+            # get_or_create_global_llm() # Your existing utility
+            get_llm_instance()
+            logger.info("Get Instance View Called")
+            requested_prompt_type = data.get("prompt_type", "standard")
+            default_prompt_name = os.getenv("name", "standard")
+
+            with transaction.atomic():
+                # Fetch or create prompt record
+                prompt_record = Prompt.objects.filter(name=requested_prompt_type).first()
+
+                if not prompt_record and requested_prompt_type != default_prompt_name:
+                    logger.info(f"Prompt '{requested_prompt_type}' fallback to '{default_prompt_name}'")
+                    prompt_record = Prompt.objects.filter(name=default_prompt_name).first()
+
+                if not prompt_record:
+                    logger.info(f"Creating '{default_prompt_name}' from env vars.")
+                    prompt_record = Prompt.objects.create(
+                        name=default_prompt_name,
+                        is_hum_agent_allow_prompt=os.getenv("is_hum_agent_allow_prompt"),
+                        no_hum_agent_allow_prompt=os.getenv("no_hum_agent_allow_prompt"),
+                        summary_prompt=os.getenv("summary_prompt")
+                    )
+
+                # Create Tenant
+                new_tenant = Tenant_AI.objects.create(
+                    tenant_id=data.get("tenant_id"),
+                    tenant_name=data.get("tenant_name"),
+                    prompt_template=prompt_record,
+                    prompt_type=requested_prompt_type,
+                    tenant_website=data.get("tenant_website"),
+                    tenant_knowledge_base=data.get("tenant_knowledge_base"),
+                    tenant_text=data.get("tenant_text"),
+                    tenant_document=data.get("tenant_document"),
+                    is_hum_agent_allow=data.get("is_hum_agent_allow"),
+                    conf_level=data.get("conf_level"),
+                    sentiment_threshold=data.get("sentiment_threshold"),
+                    message_tone=data.get("message_tone"),
+                    ticket_type=data.get("ticket_type"),
+                    chatbot_greeting=data.get("chatbot_greeting")
+                )
+
+            # Trigger AI Indexing
+            logger.info(f"Tenant {new_tenant.tenant_id} committed. Initializing vector store.")
+            initialize_vector_store(new_tenant.tenant_id)
+            
+            return JsonResponse({"status": "success", "message": "Tenant onboarded successfully"}, status=201)
+
+        except Exception as e:
+            logger.error(f"Onboarding error: {e}")
+            return JsonResponse({"error": str(e)}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TenantDetailView(View):
+    def get(self, request):
+        tenant_id = request.GET.get('tenant_id')
+        tenant = Tenant_AI.objects.filter(tenant_id=tenant_id).first()
+        if not tenant:
+            return JsonResponse({"error": "Tenant not found"}, status=404)
+        
+        return JsonResponse({
+            "tenant_id": tenant.tenant_id,
+            "tenant_name": tenant.tenant_name,
+            "chatbot_greeting": tenant.chatbot_greeting,
+            "tenant_text": tenant.tenant_text,
+            "is_hum_agent_allow": tenant.is_hum_agent_allow,
+            # ... add other fields as needed
+        })
+
+    def post(self, request): # Update Logic
+        try:
+            data = json.loads(request.body)
+            tenant_id = data.get("tenant_id")
+            tenant = Tenant_AI.objects.filter(tenant_id=tenant_id).first()
+            
+            if not tenant:
+                return JsonResponse({"error": "Tenant not found"}, status=404)
+
+            # Update fields dynamically
+            for key, value in data.items():
+                if key != "tenant_id" and hasattr(tenant, key):
+                    setattr(tenant, key, value)
+            
+            tenant.save()
+            initialize_vector_store(tenant_id)
+            return JsonResponse({"status": "success", "message": "Tenant updated."})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ChatView(View):
+    async def post(self, request):
+        try:
+            message_content = request.POST.get("message_content")
+            conversation_id = request.POST.get("conversation_id")
+            tenant_id = request.POST.get("tenant_id")
+            summarization_request = request.POST.get("summarization_request") == 'true'
+            user_msg_attach = request.FILES.get("user_msg_attach")
+
+            # get_or_create_global_llm()
+            get_llm_instance()
+
+            file_path = None
+            if user_msg_attach:
+                # Save using Django's storage system
+                path = f"chat_attachments/{user_msg_attach.name}"
+                file_path = default_storage.save(path, ContentFile(user_msg_attach.read()))
+                # default_storage returns the final path (handles name collisions)
+
+            # Call your async processing logic
+            response = await process_message(
+                message_content=message_content,
+                conversation_id=conversation_id,
+                tenant_id=tenant_id,
+                file_path=file_path,
+                summarization_request=summarization_request
+            )
+            return JsonResponse(response)
+
+        except Exception as e:
+            logger.error(f"Chat error: {str(e)}")
+            return JsonResponse({"error": "Internal Server Error"}, status=500)
+
 
 class CRMPipelineView(LoginRequiredMixin, TemplateView):
     template_name = "workflow/crm_pipeline.html"
@@ -39,99 +181,4 @@ class CRMPipelineView(LoginRequiredMixin, TemplateView):
         context['stage_choices'] = Opportunity.SALES_STAGE_CHOICES
         return context
 
-
-
-
-class Customer(models.Model):
-    customer_id = models.CharField(max_length=20, unique=True)
-    first_name = models.ForeignKey("NigerianName", on_delete=models.SET_NULL, null=True, related_name="first_names")
-    last_name = models.ForeignKey("NigerianName", on_delete=models.SET_NULL, null=True, related_name="last_names")
-    email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=11, unique=True)
-    account_number = models.CharField(max_length=10, unique=True)
-
-    gender = models.CharField(max_length=10, choices=[("male", "Male"), ("female", "Female")])
-    city_of_residence = models.CharField(max_length=100)
-    state_of_residence = models.CharField(max_length=100)
-    nationality = models.CharField(max_length=50, default="Nigeria")
-    occupation = models.CharField(max_length=100)
-    date_of_birth = models.DateField()
-
-    branch = models.ForeignKey("Branch", on_delete=models.SET_NULL, null=True)  # Customer's registered branch
-
-    def __str__(self):
-        return f"{self.first_name} {self.last_name} - {self.account_number}"
-
-    def clean(self):
-        """Custom validation for phone numbers and account numbers."""
-        if not self.phone_number.startswith("0") or self.phone_number[1] not in "6789":
-            raise ValueError("Phone number must start with '0' and second digit must be between 6 and 9.")
-        if len(self.account_number) != 10 or not self.account_number.isdigit():
-            raise ValueError("Account number must be exactly 10 digits.")
-
-class Transaction(models.Model):
-    TRANSACTION_TYPES = [
-        ("deposit", "Deposit"),
-        ("withdrawal", "Withdrawal"),
-        ("transfer", "Transfer"),
-        ("airtime", "Airtime Purchase"),
-        ("loan", "Loan Disbursement"),
-        ("bill_payment", "Bill Payment"),
-        ("balance_enquiry", "Balance Enquiry"),
-    ]
-
-    TRANSACTION_CHANNELS = [
-        ("atm", "ATM"),
-        ("pos", "POS"),
-        ("branch", "Branch"),
-        ("web", "Web"),
-        ("mobile", "Mobile"),
-    ]
-
-    transaction_id = models.CharField(max_length=30, unique=True)
-    customer = models.ForeignKey("Customer", on_delete=models.CASCADE)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    transaction_channel = models.CharField(max_length=10, choices=TRANSACTION_CHANNELS)
-    timestamp = models.DateTimeField(auto_now_add=False)
-    def __str__(self):
-        return f"{self.transaction_type} via {self.transaction_channel} - {self.amount}"
-
-
-class LoanReport(models.Model):
-    customer = models.ForeignKey("Customer", on_delete=models.CASCADE)
-    loan_account_number = models.CharField(max_length=20, unique=True)
-    amount_collected = models.DecimalField(max_digits=12, decimal_places=2)
-    date_loan_booked = models.DateField()
-    last_repayment_date = models.DateField(null=True, blank=True)
-    loan_balance = models.DecimalField(max_digits=12, decimal_places=2)
-
-    branch_booked = models.ForeignKey("Branch", on_delete=models.SET_NULL, null=True)  # Branch where loan was processed
-
-    def __str__(self):
-        return f"Loan {self.loan_account_number} - Balance: {self.loan_balance}"
-
-
-class ComplianceRecord(models.Model):
-    record_id = models.CharField(max_length=30, unique=True)
-    transaction = models.ForeignKey("Transaction", on_delete=models.CASCADE)
-    compliance_status = models.CharField(max_length=50, choices=[("passed", "Passed"), ("flagged", "Flagged")])
-    audit_notes = models.TextField(blank=True)
-    checked_by = models.CharField(max_length=255)
-    checked_date = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Compliance {self.record_id} - {self.compliance_status}"
-    
-class BranchPerformance(models.Model):
-    branch = models.ForeignKey("Branch", on_delete=models.CASCADE)
-    total_customers = models.PositiveIntegerField()
-    total_transactions = models.PositiveIntegerField()
-    revenue_generated = models.DecimalField(max_digits=12, decimal_places=2)
-    report_date = models.DateField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.branch.branch_name} - {self.report_date}"                    
-    
 
