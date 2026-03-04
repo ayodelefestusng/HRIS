@@ -50,6 +50,7 @@ from django.conf import settings
 from rest_framework.exceptions import NotFound
 # from database import SessionLocal, Tenant, Conversation, Message, Prompt, get_db, LLM
 from org.views import log_with_context
+from .models import Tenant_AI, Conversation, Message, Prompt, LLM 
 # from .models import Conversation, Tenant # (Local relative imports)
 
 # ==================================
@@ -132,10 +133,19 @@ PayslipDownloadQuery,PayslipDownloadResponse,PayslipExplainQuery,PayslipExplainR
 PrepareLeaveApplicationRequest,PreparedLeaveApplication,ValidateLeaveBalanceRequest,
 ValidateLeaveBalanceResponse,CalculateDaysRequest,CalculateDaysResponse,SubmitLeaveApplicationRequest,SearchJobOpportunitiesRequest,
 JobOpportunityResponse,LeaveStatusRequest,ExitPolicyRequest,TravelSearchRequest,ProfileUpdateInput,
-CustomerProfileInput,CustomerDetailsInput,ToolInput,Answer,VisualizationInput,SQLQueryInput,Summary,State
-                   )
+CustomerProfileInput,CustomerDetailsInput,ToolInput,Answer,VisualizationInput,SQLQueryInput,Summary,State,
+           )
+from .models import LLM      
+from org.models import Tenant
 
 from .ollama_service import OllamaService
+
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from datetime import datetime
+import os
+
 
 # Environment Variable Mapping
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY", "AIzaSy...") # Replace with env var
@@ -150,7 +160,7 @@ os.environ["LANGSMITH_TRACING"] = "true"
 os.environ["LANGSMITH_PROJECT"] = os.getenv("LANGSMITH_PROJECT", "Agent_Creation")
 GEMINI_INIT= os.getenv("GEMINI_INIT", "google_genai:gemini-flash-latest")
 
-embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+embeddings = None  # Lazy initialized in initialize_vector_store()
 
 # ==================================
 # ⚙️ CONFIGURATION & LOGGING SETUP
@@ -332,11 +342,6 @@ def get_sql_database_instance():
         return None
 
 
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from datetime import datetime
-import os
 
 Base = declarative_base()
 # Database Setup
@@ -388,27 +393,24 @@ def safe_json(data):
 
 
 def initialize_vector_store(tenant_id: str):
+    tenant_id = str(tenant_id)
     persist_directory = os.path.join("faiss_dbs", tenant_id)
     conversation_id = ""
 
-    # Ensure embeddings client is available and lazily initialized to avoid
-    # making network calls at import time.
     global embeddings
     if embeddings is None:
         try:
-            # Priority: os.environ then fallback to global constant
-            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or GOOGLE_API_KEY
-            
-            log_info(f"Initializing embeddings. Key source check: ENV={bool(os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY'))}, GLOBAL={bool(GOOGLE_API_KEY)}", tenant_id, conversation_id)
-            
+            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") 
+            log_info(
+                f"Initializing embeddings. Key source check: ENV={bool(os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY'))}",
+                tenant_id, conversation_id
+            )
             if not api_key:
                 raise ValueError("No API key found for embeddings. Set GEMINI_API_KEY or GOOGLE_API_KEY.")
 
             model = os.getenv("GOOGLE_EMBEDDING_MODEL", "models/gemini-embedding-001")
-            
-            # Ensure it's in the environment as well for internal library fallbacks
-            os.environ["GOOGLE_API_KEY"] = api_key
-            
+            # os.environ["GOOGLE_API_KEY"] = api_key
+
             embeddings = GoogleGenerativeAIEmbeddings(model=model, google_api_key=api_key)
             log_info("GoogleGenerativeAIEmbeddings initialized successfully.", tenant_id, conversation_id)
         except Exception as e:
@@ -420,25 +422,56 @@ def initialize_vector_store(tenant_id: str):
                 "message": "Embeddings client initialization failed. RAG functionality limited."
             }
 
-    db = SessionLocal()
+    # Use Django ORM for tenant lookups to avoid mixing SQLAlchemy and Django models
+    tenant_obj = None
+    current_tenant = None
     try:
-        current_tenant = db.query(Tenant).filter(Tenant.tenant_id == tenant_id).first()
-    finally:
-        db.close()
-        
+        # Look up Tenant by code using Django ORM
+        tenant_obj = Tenant.objects.filter(code=tenant_id).first()
+
+        # If not found, fallback to DMC (idempotent get-or-create)
+        if not tenant_obj:
+            tenant_obj = Tenant.objects.filter(code="DMC").first()
+            if not tenant_obj:
+                tenant_obj = Tenant.objects.create(
+                    name="DMC",
+                    code="DMC",
+                    subdomain="dmc",
+                    is_active=True
+                )
+
+        # Query Tenant_AI using Django ORM
+        # Import here to avoid circular imports at module load
+        from .models import Tenant_AI
+
+        current_tenant = Tenant_AI.objects.filter(tenant=tenant_obj).first()
+
+        # If Tenant_AI doesn’t exist, create it once
+        if not current_tenant:
+            current_tenant = Tenant_AI.objects.create(
+                tenant=tenant_obj,
+                prompt_type="standard"  # or whatever default you want
+            )
+
+    except Exception as e:
+        log_error(
+            f"Error initializing tenant in vector store: {e}",
+            tenant_id,
+            conversation_id,
+        )
+        return None, {"error": f"Failed to initialize tenant: {str(e)}"}
+
     if not current_tenant:
         return None, {"error": "Tenant not found"}
 
-    # Health check for embeddings (graceful fallback if embedding API fails)
+    # Health check for embeddings
     try:
         embeddings.embed_query("Health check")
     except Exception as e:
         log_warning(
             f"Embedding API unavailable (non-fatal): {str(e)}. Using RAG without embeddings.",
-            tenant_id,
-            conversation_id,
+            tenant_id, conversation_id,
         )
-        # Return None but as a non-fatal error — app will continue without vector store
         return None, {
             "status": "warning",
             "doc_count": 0,
@@ -449,45 +482,17 @@ def initialize_vector_store(tenant_id: str):
     all_docs = []
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
-    # 1. Process tenant_text (Direct String from DB)
+    # Process tenant_text
     if current_tenant.tenant_text:
-        log_info(
-            "Processing raw tenant_text for vector store.", tenant_id, conversation_id
-        )
+        log_info("Processing raw tenant_text for vector store.", tenant_id, conversation_id)
         text_chunks = text_splitter.split_text(current_tenant.tenant_text)
         for chunk in text_chunks:
-            all_docs.append(
-                Document(page_content=chunk, metadata={"source": "tenant_text"})
-            )
+            all_docs.append(Document(page_content=chunk, metadata={"source": "tenant_text"}))
 
-    # 2. Process tenant_knowledge_base (URL Crawling)
-    # if current_tenant.tenant_knowledge_base:
-    #     log_info(f"Crawling knowledge base: {current_tenant.tenant_knowledge_base}", tenant_id, conversation_id)
-    #     try:
-
-    #         loader = RecursiveUrlLoader(
-    #         url=current_tenant.tenant_knowledge_base,
-    #         max_depth=2,
-    #         extractor=lambda x: soup(x, "html.parser").text,
-    #         prevent_outside=True  # Strictly stays within the base domain
-    #     )
-    #         # load_and_split handles the splitting into chunks automatically
-    #         web_docs = loader.load_and_split(text_splitter=text_splitter)
-    #         for doc in web_docs:
-    #             doc.metadata["source"] = "tenant_knowledge_base"
-    #         all_docs.extend(web_docs)
-    #     except Exception as e:
-    #         log_error(f"Failed to crawl knowledge base URL: {e}", tenant_id, conversation_id)
-
-    # 3. Process tenant_document (Physical File)
+    # Process tenant_document
     if current_tenant.tenant_document and os.path.exists(str(current_tenant.tenant_document)):
         path = str(current_tenant.tenant_document)
-        log_info(
-            f"Processing knowledge file: {os.path.basename(path)}",
-            tenant_id,
-            conversation_id,
-        )
-
+        log_info(f"Processing knowledge file: {os.path.basename(path)}", tenant_id, conversation_id)
         try:
             if path.lower().endswith(".pdf"):
                 loader = PyPDFLoader(path)
@@ -497,30 +502,22 @@ def initialize_vector_store(tenant_id: str):
                 loader = CSVLoader(path)
             else:
                 loader = UnstructuredFileLoader(path)
-
             all_docs.extend(loader.load_and_split(text_splitter=text_splitter))
         except Exception as e:
             log_error(f"Failed to process file {path}: {e}", tenant_id, conversation_id)
 
-    # 4. Finalizing the Vector Store
+    # Finalize vector store
     if not all_docs:
-        # Avoid empty index errors by providing a placeholder if no info exists
-        log_warning(
-            "No documentation found. Creating empty index.", tenant_id, conversation_id
-        )
+        log_warning("No documentation found. Creating empty index.", tenant_id, conversation_id)
         vector_store = FAISS.from_texts([" "], embeddings)
     else:
+        log_info(f"Creating vector store with {len(all_docs)} documents.", tenant_id, conversation_id)
         vector_store = FAISS.from_documents(all_docs, embeddings)
 
-    # Persistence
     os.makedirs(persist_directory, exist_ok=True)
     vector_store.save_local(persist_directory)
-
+    log_info(f"Vector store initialized and saved to {persist_directory}.", tenant_id, conversation_id)
     return vector_store, {"status": "success", "doc_count": len(all_docs)}
-
-
-
-
 # Connect to the checkpoint database using the file path
 checkpoint_file = "langgraph_checkpoints.sqlite"
 memorys = AsyncSqliteSaver.from_conn_string(checkpoint_file)
@@ -537,14 +534,10 @@ def get_llm_instancev1(llm_config=None):
     - ollama_cloud: Ollama Cloud API (requires OLLAMA_API_KEY)
     """
     # If explicit config passed, use it. Otherwise fetch global if needed.
-    # Note: 'llm_config' here is expected to be an SQLAlchemy object or None.
+    # Note: 'llm_config' here is expected to be a Django ORM object or None.
     
     if not llm_config:
-        db_temp = SessionLocal()
-        try:
-            llm_config = db_temp.query(LLM).first()
-        finally:
-            db_temp.close()
+        llm_config = LLM.objects.first()
 
     # Default to initialized model_with_tools if no config found or name is unknown
     if not llm_config:
@@ -588,9 +581,68 @@ def get_llm_instancev1(llm_config=None):
         return llm_instance.bind_tools(tools)
     
     return model_with_tools
-
+from .models import LLM
 
 def get_llm_instance(llm_config=None):
+    """
+    Returns an LLM instance based on the provided configuration or global DB setting.
+    
+    Supported LLM types:
+    - gemini: Google Gemini API
+    - ollama: Local Ollama instance
+    - ollama_cloud: Ollama Cloud API (requires OLLAMA_API_KEY)
+    """
+    # If explicit config passed, use it. Otherwise fetch global if needed.
+    # Note: 'llm_config' here is expected to be a Django ORM object or None.
+    logger.info("🌐 Initializing Agoba")
+    if not llm_config:
+        llm_config = LLM.objects.first()
+
+    # Default to initialized model_with_tools if no config found or name is unknown
+    if not llm_config:
+        return model
+
+    name = llm_config.name.lower()
+    if name == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY")  # Always from env
+        model_name = llm_config.model or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        
+        # Instantiate Gemini
+        # Standard safety settings can be added here as needed
+        llm_instance = ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=api_key,
+            temperature=0,
+            convert_system_message_to_human=True 
+        )
+        # return llm_instance.bind_tools(tools)
+        return llm_instance
+    elif name == "ollama_cloud":
+        # Use ollama_cloud as a special sentinel value
+        logger.info("🌐 Initializing Ollama Cloud LLM instance")
+        llm_instance = OllamaService(
+            base_url=OLLAMA_BASE_URL,  # Not used for cloud, but required by constructor
+            username=OLLAMA_USERNAME,  # Not used for cloud
+            password=OLLAMA_PASSWORD,  # Not used for cloud
+            model="ollama_cloud"  # Special sentinel value triggers cloud API
+        )
+        # return llm_instance.bind_tools(tools)
+        return llm_instance
+    
+    elif name == "ollama":
+        model_name = llm_config.model or OLLAMA_MODEL
+        llm_instance = OllamaService(
+            base_url=OLLAMA_BASE_URL,
+            username=OLLAMA_USERNAME,
+            password=OLLAMA_PASSWORD,
+            model=model_name
+        )
+        # return llm_instance.bind_tools(tools)
+        return llm_instance
+    return model
+
+
+def get_llm_instanceFASTPI(llm_config=None):
     """
     Returns an LLM instance based on the provided configuration or global DB setting.
     
@@ -651,7 +703,6 @@ def get_llm_instance(llm_config=None):
         # return llm_instance.bind_tools(tools)
         return llm_instance
     return model
-
 
 # ==========================
 # 🛠️ Tools

@@ -43,7 +43,7 @@ def development_directory_path(instance, filename):
 class Tenant(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(
-        max_length=10,
+        max_length=50,
         unique=True,
         help_text="Short unique code for the tenant (e.g., MSFT)",
     )
@@ -105,6 +105,8 @@ class TenantModel(models.Model):
 
     class Meta:
         abstract = True
+
+
 # https://copilot.microsoft.com/shares/guBVcRj7GYsaeDafD1M61
 # https://www.youtube.com/watch?v=bnKnT46s-PI
 class TaggedItem(TenantModel):

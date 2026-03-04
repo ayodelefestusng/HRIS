@@ -387,7 +387,7 @@ class LLM(TenantModel):
 
 class Tenant_AI(TenantModel):
 
-    prompt_template_id = models.IntegerField(null=True, blank=True)
+    prompt_template = models.ForeignKey(Prompt, on_delete=models.SET_NULL, null=True, blank=True)
     
     tenant_website = models.CharField(max_length=255, null=True, blank=True)
     tenant_knowledge_base = models.CharField(max_length=255, null=True, blank=True)
