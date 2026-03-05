@@ -137,10 +137,13 @@ ValidateLeaveBalanceResponse,CalculateDaysRequest,CalculateDaysResponse,SubmitLe
 JobOpportunityResponse,LeaveStatusRequest,ExitPolicyRequest,TravelSearchRequest,ProfileUpdateInput,
 CustomerProfileInput,CustomerDetailsInput,ToolInput,Answer,VisualizationInput,SQLQueryInput,Summary,State,
            )
-from .models import LLM      
+from .models import LLM, Tenant_AI     
 from org.models import Tenant
+from django.contrib.auth import get_user_model
 
 from .ollama_service import OllamaService
+
+User = get_user_model()
 
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -1399,11 +1402,25 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
     logger.info(f"Employee ID: {employee_id}-message Content: {message_content}", tenant_id, conversation_id)
 
     current_tenant = None
+    user = None
+    tenant_obj = None
+    db_uri = None
     
-    # --- 1. Tenant Configuration ---
+    # --- 1. Tenant Configuration via Employee ID ---
     try:
-        # Use Django ORM with select_related for better performance
+        # Fetch user by employee_id (email)
+        if employee_id:
+            user = User.objects.filter(email=employee_id).first()
+            if not user:
+                log_warning(f"No user found for email: {employee_id}. Falling back to tenant_id.", tenant_id, conversation_id)
+            else:
+                # Get tenant from user
+                tenant_obj = user.tenant
+                if tenant_obj:
+                    tenant_id = tenant_obj.code
+                    log_info(f"Fetched tenant '{tenant_id}' from user {employee_id}", tenant_id, conversation_id)
         
+        # Use Django ORM with select_related for better performance
         current_tenant = Tenant_AI.objects.select_related('prompt_template', 'tenant').filter(tenant__code=tenant_id).first()
 
         if not current_tenant:
@@ -1413,6 +1430,9 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
             
         # Using db_uri if present (idle but still accessible)
         db_uri = current_tenant.db_uri
+        if not db_uri and tenant_obj:
+            # Fallback: try to get db_uri from Tenant_AI's tenant relationship
+            db_uri = current_tenant.tenant.code if hasattr(current_tenant, 'tenant') else None
         if db_uri and db_uri.startswith("postgres://"):
             db_uri = db_uri.replace("postgres://", "postgresql://", 1)
         # --- Global LLM Configuration ---
@@ -1431,6 +1451,14 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
         is_hum_agent_allow = getattr(current_tenant, "is_hum_agent_allow", True)
         requested_type = getattr(current_tenant, "prompt_type", "standard") or "standard"
         
+        # Build tenant_config_dict for tools that need tenant information
+        tenant_config_dict = {
+            "tenant_id": tenant_id,
+            "employee_id": employee_id,
+            "db_uri": db_uri,
+            "user": user
+        }
+        log_info(f"Tenant config prepared. DB URI present: {bool(db_uri)}", tenant_id, conversation_id)
         log_info(f"Fetching prompts for type: {requested_type}", tenant_id, conversation_id)
         
         # Try to fetch the specific prompt type using Django ORM
@@ -1560,7 +1588,14 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
         graph = build_graph(tenant_id, conversation_id, checkpointer=checkpointer)
         log_info("Graph built successfully", tenant_id, conversation_id)
         try:
-            config_dict = {"configurable": {"thread_id": conversation_id}}
+            config_dict = {
+                "configurable": {
+                    "thread_id": conversation_id,
+                    "employee_id": employee_id,
+                    "tenant_id": tenant_id,
+                    "db_uri": db_uri
+                }
+            }
             output = graph.invoke(State(**initial_state), config=config_dict)    
             log_info("LangGraph execution completed", tenant_id, conversation_id)
         except Exception as e:
@@ -1644,54 +1679,60 @@ def get_payslip_tool(config: RunnableConfig, **kwargs):
 def fetch_available_leave_types_tool(config: RunnableConfig, **kwargs):
     """
     REQUIRED FIRST STEP for leave applications. 
-    Call this immediately when a user wants to apply for leave to get valid leave names.
+    Fetches available leave types from the PostgreSQL tenant database.
     """
     # 1. Get the ID we injected in tool_node for the response message
     tid = kwargs.get('current_tool_id')
     if not tid:
-        # Fallback to prevent the validation error you saw
         tid = "unknown_id" 
-    emp_id = config["configurable"].get("employee_id")
     
-    HRLogger.info(f"Fetching available leave types for employee: {emp_id}", config)
+    emp_id = config["configurable"].get("employee_id")
+    tenant_id = config["configurable"].get("tenant_id")
+    db_uri = config["configurable"].get("db_uri")
+    
+    HRLogger.info(f"Fetching available leave types for employee: {emp_id} from tenant: {tenant_id}", config)
 
     try:
-        # Ensure the MongoDB connection is available before any attribute access
-        if db_mongo is None:
-            HRLogger.error("Database connection is not available while fetching leave types.", config)
-            return ToolMessage(content="Error: Database connection lost.", tool_call_id=tid)
+        # Validate db_uri is available
+        if not db_uri:
+            HRLogger.error(f"No database URI available for tenant {tenant_id}", config)
+            return ToolMessage(content="Error: Database configuration missing.", tool_call_id=tid)
 
-        # Step 1: Find the employee (use dict-style collection access to avoid attribute access on None)
-        employee = db_mongo["employees"].find_one(
-            {"_id": ObjectId(str(emp_id).strip())}, 
-            {"companyID": 1, "leaveCategory": 1}
-        )
+        # Ensure PostgreSQL URI uses postgresql:// prefix
+        if db_uri.startswith("postgres://"):
+            db_uri = db_uri.replace("postgres://", "postgresql://", 1)
 
-        if not employee:
-            return ToolMessage(content="Error: Employee record not found.", tool_call_id=tid)
-
-        company_id = employee.get("companyID")
-        leave_category_id = employee.get("leaveCategory")
-
-        # Use dict-style access to avoid attribute access on None and be explicit about collection name
-        leave_category_doc = db_mongo["leavecategories"].find_one(
-            {"_id": leave_category_id, "companyID": company_id},
-            {"leaveTypes": 1}
-        )
-
-        if leave_category_doc and "leaveTypes" in leave_category_doc:
-            # Step 3: Extract names for the LLM
-            leave_names = [lt.get("leaveName") for lt in leave_category_doc["leaveTypes"]]
-            
-            result_text = f"The following leave types are available: {', '.join(leave_names)}. Which one would you like to apply for?"
-            
-            # Return as a ToolMessage to keep the graph flow clean
-            return ToolMessage(content=result_text, tool_call_id=tid)
-        else:
-            return ToolMessage(content="You are not currently entitled to any leave types.", tool_call_id=tid)
+        # Create engine and execute query
+        from sqlalchemy import text
+        engine = create_engine(db_uri)
+        
+        try:
+            with engine.connect() as connection:
+                # Query the leave_leavetype table for available leave types for this tenant
+                query = text("""
+                    SELECT id, name, is_paid, base_entitlement 
+                    FROM leave_leavetype 
+                    WHERE tenant_id = (
+                        SELECT id FROM org_tenant WHERE code = :tenant_code
+                    )
+                    ORDER BY name
+                """)
+                
+                result = connection.execute(query, {"tenant_code": tenant_id})
+                leave_types = result.fetchall()
+                
+                if leave_types:
+                    # Extract leave type names
+                    leave_names = [row[1] for row in leave_types]  # row[1] is the name column
+                    result_text = f"The following leave types are available: {', '.join(leave_names)}. Which one would you like to apply for?"
+                    return ToolMessage(content=result_text, tool_call_id=tid)
+                else:
+                    return ToolMessage(content="No leave types are currently configured for your tenant.", tool_call_id=tid)
+        finally:
+            engine.dispose()
 
     except Exception as e:
-        HRLogger.error(f"Failed to fetch leave types: {str(e)}", config)
+        HRLogger.error(f"Failed to fetch leave types from database: {str(e)}", config)
         return ToolMessage(content=f"Error retrieving leave types: {str(e)}", tool_call_id=tid)
 
 
