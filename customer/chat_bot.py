@@ -78,13 +78,6 @@ from langchain_community.tools.sql_database.tool import QuerySQLDatabaseTool
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_tavily import TavilySearch
 from langchain.tools import tool
-from langchain_core.messages import (
-            AIMessage,
-            HumanMessage,
-            SystemMessage,
-            ToolMessage,
-            AnyMessage,
-        )
 
         # ==================================
         # 📦 LangChain Document Loaders & Utilities
@@ -295,6 +288,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_sql_database_instance():
     """Create and return a SQLDatabase instance or None on failure."""
+    log_info("Aluke staring db",GLOBAL_SCOPE,NO_CONVO)
     db_uri, db_file = _build_db_uri_from_env()
 
     try:
@@ -334,6 +328,11 @@ def _build_db_uri_from_env() -> tuple[str, str]:
     db_uri = os.getenv("DATABASE_URL")
     if not db_uri:
         db_uri = "sqlite:///ai_database.sqlite3"
+    
+    # Fix PostgreSQL URI scheme
+    if db_uri.startswith("postgres://"):
+        db_uri = db_uri.replace("postgres://", "postgresql://", 1)
+    
     db_file_path = os.getenv("DATABASE_URL")
 
     return db_uri, db_file_path
@@ -697,7 +696,7 @@ if db:
 
         # Change 2: Success print changed to log_info
         log_info("SQL Agent initialized successfullyyy.", GLOBAL_SCOPE, NO_CONVO)
-        log_info("ALUKE Agent initialized successfully.", GLOBAL_SCOPE, NO_CONVO)
+        log_debug("ALUKE Agent initialized successfully.", GLOBAL_SCOPE, NO_CONVO)
     except Exception as e:
         # Change 3: Error print changed to log_error
         log_error( f"Error initializing SQL Agent: {e}. SQL query tool will not be available.", GLOBAL_SCOPE,NO_CONVO,)
@@ -900,6 +899,39 @@ def tool_node(state: State) -> dict:
         return {"messages": new_messages, **state_updates}
 
 
+
+def extract_final_answer(response):
+    # Case 1: dict already
+    if isinstance(response, dict):
+        return response.get("answer") or json.dumps(response)
+
+    # Case 2: AIMessage or object with .content
+    if hasattr(response, "content"):
+        content = response.content
+    else:
+        content = str(response) if response is not None else "LLM did not return a response"
+
+    # Strip markdown code fences if present
+    content = re.sub(r"^```json\s*|\s*```$", "", content.strip(), flags=re.MULTILINE)
+
+    # Try parsing JSON blocks
+    json_blocks = re.findall(r"\{.*?\}", content, flags=re.DOTALL)
+    parsed_objects = []
+    for block in json_blocks:
+        try:
+            parsed_objects.append(json.loads(block))
+        except Exception:
+            continue
+
+    if parsed_objects:
+        for obj in parsed_objects:
+            if "answer" in obj:
+                return obj["answer"]
+        return json.dumps(parsed_objects[-1])  # ensure string output
+
+    # Fallback: return raw content
+    return content or "LLM returned empty response"
+
 def assistant_node(state: State, config: RunnableConfig):
     """
     Consolidated Assistant Node: HR Support, Data Analytics, and Customer Concierge.
@@ -907,7 +939,7 @@ def assistant_node(state: State, config: RunnableConfig):
     """
     tenant_id = config["configurable"].get("tenant_id", "unknown")
     conversation_id = config["configurable"].get("thread_id", "unknown")
-    logger.info(f"Assistant node triggered for tenant: {tenant_id}", config)
+    log_info(f"Assistant node triggered for tenant: {tenant_id}", tenant_id, conversation_id)
 
     # 1. DYNAMIC CONTEXT PREPARATION (HR/Leave Status)
     leave_app = state.get("leave_application")
@@ -962,6 +994,14 @@ def assistant_node(state: State, config: RunnableConfig):
     - Document Context: {state.get('pdf_content', 'None')}
     - Web Context: {state.get('web_content', 'None')}
     - SQL Result: {state.get('sql_result', 'None')}
+    
+    ### Output Format:
+You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
+```json
+{{
+  "answer": "Your response to the user",
+}}
+```
     """
 
     # 3. LLM INVOCATION
@@ -995,8 +1035,19 @@ def assistant_node(state: State, config: RunnableConfig):
     llm_with_tools = prompt_model.bind_tools(tools)
     logger.info("Invoking LLM with tools for assistant response generation.")
     response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + messages)
-    logger.info(f"LLM response: {response}")
-    return {"messages": [response]}
+    logger.info(f"LLM RAW ALukeee response Assitant Node: {response}")
+    
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        return {"messages": [response]}  # keep the AIMessage intact
+    
+    final_answer = extract_final_answer(response)
+    logger.info(f"LLM response Assitant Node: {final_answer}")
+    return {"messages": [AIMessage(content=final_answer)]}
+
+
+    # return {"messages": [final_answer]}
+
+
 def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
     workflow = StateGraph(State)
 
@@ -1139,11 +1190,7 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
     if tenant_vector_store is not None:
         try:
             document_count = tenant_vector_store.index.ntotal
-            logger.info(
-                f"Vector store document count: {document_count}",
-                tenant_id,
-                conversation_id,
-            )
+            log_info(f"Vector store document count: {document_count}", tenant_id, conversation_id)
         except AttributeError:
             log_error("Unexpected vector store structure.", tenant_id, conversation_id)
     else:
@@ -1217,10 +1264,14 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
             state={"tenant_id": tenant_id, "db_uri": db_uri},
             llm=llm,
         )
-        log_info("SQLs Agent initialized successfully.", tenant_id, conversation_id)
-        TENANT_SQL_AGENTS[tenant_id] = sql_agent
+        if sql_agent:
+            log_info("SQLs Agent initialized successfully.", tenant_id, conversation_id)
+            TENANT_SQL_AGENTS[tenant_id] = sql_agent
+        else:
+            log_error("SQLs Agent initialization failed.", tenant_id, conversation_id)
 
-    log_info("SQLY Agent initialized successfully.", tenant_id, conversation_id)
+    if TENANT_SQL_AGENTS.get(tenant_id):
+        log_info("SQLY Agent is ready.", tenant_id, conversation_id)
 
     # --- 7. Graph State Preparation ---
     initial_state = {
@@ -1259,22 +1310,27 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
 
     # --- 9. Response Extraction ---
     current_answer = output.get("leave_application")
+    logger.info(f"LLM response Process message : {current_answer}")
     # Updated key per your requirement: leave_application instead of submission_result
     metadata = output.get("metadata")
 
     if current_answer:
+        # If it's a dict (from our structured Answer model), extract the specific 'answer' string
+        if isinstance(current_answer, dict) and "answer" in current_answer:
+            current_answer = current_answer["answer"]
+            
         return {
             "answer": current_answer,
             "metadata": metadata,
         }
     else:
-        last_message = output.get("messages", [AIMessage(content="Internal error.")])[
-            -1
-        ]
-        fallback = (
-            last_message.content
-            if isinstance(last_message, AIMessage)
-            else str(last_message)
-        )
-        return {"answer": fallback, "metadata": {}}
+        last_message = output.get("messages", [AIMessage(content="Internal error.")])[-1]
 
+        if hasattr(last_message, "content"):
+            # Only take the text content, not the whole object
+            fallback = last_message.content
+        else:
+            fallback = str(last_message)
+
+        logger.info(f"LLM Response Fallback: {fallback}")
+        return {"answer": fallback, "metadata": {}}

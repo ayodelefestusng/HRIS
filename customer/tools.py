@@ -7,7 +7,12 @@ from langchain_core.runnables import RunnableConfig
 # from langchain_core.tools import tool, ToolMessage, Command
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
-
+import re
+import io
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+from matplotlib.ticker import FuncFormatter
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from sqlalchemy import create_engine
@@ -19,13 +24,18 @@ from langchain_core.messages import (
             ToolMessage,
             AnyMessage,
         )
-
+from langgraph.prebuilt import ToolNode, create_react_agent, tools_condition
+from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
 from langchain.tools import tool
+from langchain_community.utilities import SQLDatabase
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+
+
 
 # from myproject_revisit.org.management.commands import state
 
-
+from .ollama_service import OllamaService
 from .base import (MultiplicationInput,
 PayslipQuery,LeaveBalanceRequest,PayslipListQuery,PayslipInfo,PayslipSummary,PayslipListResponse,
 PayslipDownloadQuery,PayslipDownloadResponse,PayslipExplainQuery,PayslipExplainResponse,LeaveTypeRequest,
@@ -53,7 +63,7 @@ logging.basicConfig(
 )
 
 
-
+load_dotenv()
 
 logger = logging.getLogger("HR_AGENT")
 logger.propagate = True # Flow to root logger for persistence
@@ -92,6 +102,11 @@ def log_exception_auto(msg, tenant_id, conversation_id):
     )
 
 
+tavily_search = TavilySearch(max_results=2)
+search_tool = TavilySearch(
+    max_results=5,
+    include_raw_content=True,
+)
 
 
 @tool("get_payslip_tool", args_schema=PayslipQuery)
@@ -847,7 +862,7 @@ def init_sql_agent(state: State, llm):
             model=OLLAMA_MODEL
         )
         
-        toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+        toolkit = SQLDatabaseToolkit(db=db, llm=ollama_llm)
         tools = toolkit.get_tools()
         for tool_item in tools:
             log_info(
@@ -876,10 +891,12 @@ def init_sql_agent(state: State, llm):
             - Limit your query to at most 5 results.
             """
         # agent = create_agent(llm, tools, system_prompt=SQL_SYSTEM_PROMPT)
-        agent = create_react_agent(
+        # Try using create_agent instead of create_react_agent to avoid tool binding issues
+        from langchain.agents import create_agent
+        agent = create_agent(
             llm,
             tools,
-            prompt=SQL_SYSTEM_PROMPT.format(dialect=db.dialect),
+            system_prompt=SQL_SYSTEM_PROMPT.format(dialect=db.dialect),
         )
         log_info(
             f"[{tenant_id}] SQL Agent initialized successfully.",
@@ -887,7 +904,7 @@ def init_sql_agent(state: State, llm):
             conversation_id,
         )
       
-        load_dotenv()
+        
         TENANT_SQL_AGENTS[tenant_id] = agent
         TENANT_DBS[tenant_id] = db
         log_info(" SQL Agent initialized successfully.", tenant_id, conversation_id)
@@ -906,6 +923,7 @@ def get_customer_details_tool(config: RunnableConfig, **kwargs):
     """
     Retrieves a customer's details from the PostgreSQL database using phone number, email, or account number.
     """
+    log_info("get_customer_details_tool invoked with arguments: ", config, kwargs)
     tid = kwargs.get('current_tool_id') or "unknown_id"
     tenant_code = config["configurable"].get("tenant_id")
     db_uri = config["configurable"].get("db_uri")
@@ -967,6 +985,8 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
     """
     Updates the customer's profile details (phone, email, occupation, etc.) in the PostgreSQL database.
     """
+    log_info("update_customer_tooll invoked with arguments: ", config, kwargs)
+
     tid = kwargs.get('current_tool_id') or "unknown_id"
     tenant_code = config["configurable"].get("tenant_id")
     db_uri = config["configurable"].get("db_uri")
@@ -1040,6 +1060,8 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
 )
 def sql_query_tool(query: str, state: dict) -> dict:
     """Executes a SQL query using the pre-initialized SQL agent and returns the result."""
+    log_info("sql_query_tool invoked with arguments: ", state, query)
+    
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
@@ -1100,7 +1122,7 @@ def pdf_retrieval_tool(query: str, state: dict) -> dict:
         dict: A dictionary containing 'pdf_content'. This will hold the search
               results on success, or a structured error message on failure.
     """
-
+    log_info("pdf_retrieval_tool invoked with arguments: ", state, query)
     if "state" in state:
         state = state["state"]
 
@@ -1380,7 +1402,7 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
                 SQL Query:
                 """
         raw_sql_query = llm.invoke(sql_generation_prompt).content.strip()
-
+        
         match = re.search(r"```(?:sql)?\s*(.*?)\s*```", raw_sql_query, re.DOTALL)
         if match:
             sql_query = match.group(1).strip()
@@ -1496,6 +1518,7 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
 
 def get_column_types(df: pd.DataFrame):
     """Helper function to identify column types for plotting."""
+    logging.info(f"--- get_column_types for query: '{df}' ---")
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
     date_cols = df.select_dtypes(include=['datetime', 'datetimetz']).columns.tolist()
