@@ -1060,12 +1060,15 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
 )
 def sql_query_tool(query: str, state: dict) -> dict:
     """Executes a SQL query using the pre-initialized SQL agent and returns the result."""
-    log_info("sql_query_tool invoked with arguments: ", state, query)
+    tenant_config = state.get("tenant_config", {})
+    tenant_id = tenant_config.get("tenant_id", "unknown")
+    conversation_id = state.get("conversation_id", "unknown")
+    log_info(f"sql_query_tool invoked with query: {query}", tenant_id, conversation_id)
     
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
-    db_uri = state.get("db_uri")
+    db_uri = tenant_config.get("db_uri") or state.get("db_uri")
 
     if not db_uri:
         log_warning(
@@ -1122,7 +1125,9 @@ def pdf_retrieval_tool(query: str, state: dict) -> dict:
         dict: A dictionary containing 'pdf_content'. This will hold the search
               results on success, or a structured error message on failure.
     """
-    log_info("pdf_retrieval_tool invoked with arguments: ", state, query)
+    tenant_id = state.get("tenant_id", "unknown")
+    conversation_id = state.get("conversation_id", "unknown")
+    log_info(f"pdf_retrieval_tool invoked with query: {query}", tenant_id, conversation_id)
     if "state" in state:
         state = state["state"]
 

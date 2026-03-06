@@ -69,7 +69,7 @@ from langchain.agents import create_agent
 # ==================================
 from langchain_community.document_loaders import (
     PyPDFLoader, TextLoader, UnstructuredFileLoader, CSVLoader, 
-    RecursiveUrlLoader, WebBaseLoader,
+    RecursiveUrlLoader, WebBaseLoader, unstructured,
 )
 from langchain_community.vectorstores import FAISS, Chroma
 from langchain_community.utilities import SQLDatabase
@@ -194,6 +194,9 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("langsmith").setLevel(logging.INFO)
 
+import inspect
+
+
 
 def log_info(msg, tenant_id, conversation_id):
     logger.info(f"[Tenant: {tenant_id} | Conversation: {conversation_id}] {msg}")
@@ -223,15 +226,15 @@ OLLAMA_MODEL = "gpt-oss-safeguard:20b"
 
 embeddings = None
 
-llm = OllamaService(
-    base_url=OLLAMA_BASE_URL,
-    username=OLLAMA_USERNAME,
-    password=OLLAMA_PASSWORD,
-    model=OLLAMA_MODEL
-)
+# llm = OllamaService(
+#     base_url=OLLAMA_BASE_URL,
+#     username=OLLAMA_USERNAME,
+#     password=OLLAMA_PASSWORD,
+#     model=OLLAMA_MODEL
+# )
 
-llm_fallback = init_chat_model(GEMINI_INIT)
-model = llm_fallback  # Consistent naming for the primary LLM
+# llm_fallback = init_chat_model(GEMINI_INIT)
+# model = llm_fallback  # Consistent naming for the primary LLM
 
 
 current_year = datetime.now().year
@@ -391,20 +394,6 @@ class HRLogger:
         log_with_context(logging.DEBUG, f"[Conv: {ctx['c_id']} | Emp: {ctx['e_id']}] {msg}", MockUser(ctx["t_id"]))
 
 
-# from ollama_service import OllamaService
-
-# ==========================
-# 🛠️ Tools
-# ==========================
-
-tools_by_name = {tool.name: tool for tool in tools}
-model_with_tools = model.bind_tools(tools)
-# NOTE: ChatOllama is now used for both chat and tool calling
-
-
-llm = llm.bind_tools(tools)
-tools_by_name = {tool.name: tool for tool in tools}
-# Ensure RunnableConfig is imported for the node signature
 
 
 def log_tool_usage(state: State, tool_name: str):
@@ -615,7 +604,11 @@ def get_llm_instance(llm_config=None):
     logger.info("🌐 Fall Back to Defaul Model config")
     return model
 model = get_llm_instance()  # Initialize global model instance based on DB config or default
+llm = model
+
 model_with_tools = model.bind_tools(tools)  # Bind tools to the model for agent use
+
+
 # Initialize single shared DB instance (or None)
 db = get_sql_database_instance()
 DB_URI = None
@@ -707,6 +700,20 @@ if db:
 # TENANT_SQL_AGENTS = {}
 
 
+# from ollama_service import OllamaService
+
+# ==========================
+# 🛠️ Tools
+# ==========================
+
+# tools_by_name = {tool.name: tool for tool in tools}
+# model_with_tools = model.bind_tools(tools)
+# NOTE: ChatOllama is now used for both chat and tool calling
+
+
+# llm = llm.bind_tools(tools)
+tools_by_name = {tool.name: tool for tool in tools}
+# Ensure RunnableConfig is imported for the node signature
 
 
 def should_continue(state: State) -> Literal["tool_node", END]:
@@ -779,40 +786,52 @@ TOOL_INTENT_MAP = {
     }
 }
 
+
+
 def routing_guardrail_node(state: State):
     """
-    Validation node: Intercepts the LLM response. 
-    Returns 'tool_node' if valid, or 'assistant_node' if the routing is invalid 
-    (to force the LLM to correct itself).
+    Guardrail node: Validates tool calls and either allows them to proceed or
+    sends them back to the assistant for correction.
+    Returns a state dict indicating the next action.
     """
-    logger.info("Routing guardrail node activated.")
-    last_message = state["messages"][-1]
-    
-    # If no tool calls, proceed to end
-    if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
-        return END
+    logger.info("OYAS routing_guardrail_node  ")
+    if not hasattr(state["messages"][-1], "tool_calls") or not state["messages"][-1].tool_calls:
+        logger.info("OYAS jubilee")
+        return {"next_node": END}
 
-    user_input = state["messages"][-2].content.lower()
-    
-    for call in last_message.tool_calls:
+    user_input = next((m.content for m in reversed(state["messages"][:-1]) if hasattr(m, "content")), "").lower()
+
+    for call in state["messages"][-1].tool_calls:
         tool_name = call["name"]
-        
-        # Validation Logic
         is_allowed = False
         for intent, data in TOOL_INTENT_MAP.items():
             if tool_name in data["tools"]:
-                # Check if trigger words exist in the user's last message
                 if any(trigger in user_input for trigger in data["triggers"]):
                     is_allowed = True
                     break
-        
+    
         if not is_allowed:
-            state["messages"].append(SystemMessage(content="The previous tool call was invalid or unauthorized based on the user intent. Please re-evaluate."))
             logger.warning(f"Guardrail blocked unauthorized tool call: {tool_name}")
-            # Instead of crashing, we return the assistant to re-prompt
-            return "assistant_node"
-            
-    return "tool_node"
+            return {
+                "messages": [SystemMessage(content=f"Unauthorized tool call: {tool_name}. Please re-evaluate.")], 
+                "next_node": "assistant_node"
+            }
+
+    return {"next_node": "tool_node"}
+
+
+def route_after_guardrail(state: State) -> str:
+    """
+    Routing function for guardrail conditional edges.
+    Extracts the next_node from the guardrail node's state.
+    """
+    next_node = state.get("next_node")
+    if next_node == END:
+        return END
+    return next_node or "tool_node"
+
+
+
 def tool_node(state: State) -> dict:
     """Performs the tool call, injecting state for specific tools if required."""
 
@@ -894,6 +913,7 @@ def tool_node(state: State) -> dict:
         )
 
         log_info( f"Executed {len(new_messages)} tool calls.", tenant_id, conversation_id)
+        log_info( f"Executed {new_messages} tool calls.", tenant_id, conversation_id)
 
         # Return both the messages and the updated content fields
         return {"messages": new_messages, **state_updates}
@@ -901,36 +921,44 @@ def tool_node(state: State) -> dict:
 
 
 def extract_final_answer(response):
-    # Case 1: dict already
+    """
+    Robustly extract the final text answer from an LLM response or structured object.
+    """
+    # Case 1: Structured Answer or dict
     if isinstance(response, dict):
         return response.get("answer") or json.dumps(response)
-
+    
     # Case 2: AIMessage or object with .content
-    if hasattr(response, "content"):
+    if hasattr(response, "content") and response.content:
         content = response.content
     else:
+        # Fallback if content is empty or response is not a message object
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            return "Executing tools..."
         content = str(response) if response is not None else "LLM did not return a response"
 
-    # Strip markdown code fences if present
-    content = re.sub(r"^```json\s*|\s*```$", "", content.strip(), flags=re.MULTILINE)
+    # Clean up markdown and extract JSON blocks if present
+    content_clean = re.sub(r"^```json\s*|\s*```$", "", content.strip(), flags=re.MULTILINE)
+    
+    # Try direct parse
+    try:
+        parsed = json.loads(content_clean)
+        if isinstance(parsed, dict) and "answer" in parsed:
+            return parsed["answer"]
+    except:
+        pass
 
-    # Try parsing JSON blocks
-    json_blocks = re.findall(r"\{.*?\}", content, flags=re.DOTALL)
-    parsed_objects = []
+    # Try searching for JSON-like blocks if direct parse failed
+    json_blocks = re.findall(r"\{.*?\}", content_clean, flags=re.DOTALL)
     for block in json_blocks:
         try:
-            parsed_objects.append(json.loads(block))
-        except Exception:
+            obj = json.loads(block)
+            if isinstance(obj, dict) and "answer" in obj:
+                return obj["answer"]
+        except:
             continue
 
-    if parsed_objects:
-        for obj in parsed_objects:
-            if "answer" in obj:
-                return obj["answer"]
-        return json.dumps(parsed_objects[-1])  # ensure string output
-
-    # Fallback: return raw content
-    return content or "LLM returned empty response"
+    return content_clean or "LLM returned empty response"
 
 def assistant_node(state: State, config: RunnableConfig):
     """
@@ -1018,18 +1046,35 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
         # Generate structured final answer
         logger.info("Generating final structured answer.")
         structured_llm = prompt_model.with_structured_output(Answer)
-        final_answer_obj = structured_llm.invoke([SystemMessage(content=system_prompt)] + messages)
-        
-        # Attach chart if present in state
-        viz_result = state.get("visualization_result")
-        if viz_result and "image_base64" in viz_result:
-            final_answer_obj.chart_base64 = viz_result["image_base64"]
+        try:
+            # final_answer_obj = structured_llm.invoke([SystemMessage(content=system_prompt)] + messages)
+            unstructured_response = prompt_model.invoke([SystemMessage(content=system_prompt)] + messages)
+            
+            if hasattr(unstructured_response, "tool_calls") and unstructured_response.tool_calls:
+                logger.info(f"Tool calls foundAtejjd: {unstructured_response.tool_calls}")
+                return {"messages": [unstructured_response]}  # keep the AIMessage intact
+            
+        except Exception as e:
+            log_error(f"Structured output generation failed: {e}", tenant_id, conversation_id)
+            unstructured_response = None
 
-        return {
-            "messages": [AIMessage(content=final_answer_obj.answer)],
-            "leave_application": final_answer_obj.dict(),
-            "metadata": {"sentiment": final_answer_obj.sentiment, "sources": final_answer_obj.source}
-        }
+        if unstructured_response:
+            # Attach chart if present in state
+            viz_result = state.get("visualization_result")
+            if viz_result and "image_base64" in viz_result:
+                unstructured_response.chart_base64 = viz_result["image_base64"]
+
+            return {
+                "messages": [AIMessage(content=unstructured_response.content)],
+                # "leave_application": unstructured_response.dict(),
+                # "metadata": {"sentiment": unstructured_response.sentiment, "sources": unstructured_response.source}
+            }
+        else:
+            # Fallback to extract from raw invoke if structured fails
+            logger.warning("Falling back to raw extraction in assistant_node.")
+            response = prompt_model.invoke([SystemMessage(content=system_prompt)] + messages)
+            final_answer = extract_final_answer(response)
+            return {"messages": [AIMessage(content=final_answer)]}
 
     # Otherwise, regular tool-calling invoke
     llm_with_tools = prompt_model.bind_tools(tools)
@@ -1038,11 +1083,48 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
     logger.info(f"LLM RAW ALukeee response Assitant Node: {response}")
     
     if hasattr(response, "tool_calls") and response.tool_calls:
+        logger.info(f"Tool calls foundAtejjdy: {response.tool_calls}")
         return {"messages": [response]}  # keep the AIMessage intact
     
+
+    # Check 2: JSON-wrapped Tool Calls (The "Ollama Fallback")
+    if isinstance(response.content, str) and 'tool_calls' in response.content:
+
+        try:
+            logger.info(f"Tool calls foundAtejjdss: {response.tool_calls}")
+            # Clean markdown if present
+            clean_content = re.sub(r"^```json\s*|\s*```$", "", response.content.strip(), flags=re.MULTILINE)
+            parsed = json.loads(clean_content)
+            
+            if "tool_calls" in parsed:
+                # We manually reconstruct the tool_calls attribute so the rest of the graph works
+                response.tool_calls = parsed["tool_calls"]
+                # Ensure each call has an 'id' which LangGraph requires
+                for call in response.tool_calls:
+                    if 'id' not in call:
+                        call['id'] = str(uuid.uuid4())
+                    # Rename 'arguments' to 'args' if the LLM used the wrong key
+                    if 'arguments' in call and 'args' not in call:
+                        call['args'] = call.pop('arguments')
+                
+                return {"messages": [response]}
+        except Exception as e:
+            logger.error(f"Failed to manually parse tool calls: {e}")
+
+    # --- END OF NEW PARSING ---
+
     final_answer = extract_final_answer(response)
     logger.info(f"LLM response Assitant Node: {final_answer}")
     return {"messages": [AIMessage(content=final_answer)]}
+
+
+
+
+    # final_answer = extract_final_answer(response)
+    # logger.info(f"LLM response Assitant Node: {final_answer}")
+    # logger.info(f"Final Output Raw Aliko: {messages}")
+    
+    # return {"messages": [AIMessage(content=final_answer)]}
 
 
     # return {"messages": [final_answer]}
@@ -1050,39 +1132,52 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
 
 def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
     workflow = StateGraph(State)
+    log_info("Building graph for tenant: {tenant_id}, conversation: {conversation_id}", tenant_id, conversation_id)
 
     # 1. Add Nodes
     workflow.add_node("assistant_node", assistant_node)
+    log_info("Assistant node added to graph.", tenant_id, conversation_id)
+    
     workflow.add_node("tool_node", tool_node)
+    log_info("Tool node added to graph.", tenant_id, conversation_id)
+    
     workflow.add_node("guardrail_node", routing_guardrail_node)
+    log_info("Guardrail node added to graph.", tenant_id, conversation_id)
 
     # 2. Routing
     workflow.add_edge(START, "assistant_node")
+    log_info("Edge added from START to assistant_node.", tenant_id, conversation_id)
     
     # Assistant decides if it needs a tool or should end
     workflow.add_conditional_edges(
         "assistant_node", 
         lambda x: "guardrail_node" if hasattr(x["messages"][-1], "tool_calls") and x["messages"][-1].tool_calls else END
     )
+    log_info("Conditional edges added from assistant_node to guardrail_node and END.", tenant_id, conversation_id)
     
     
     # Guardrail decides if it passes to tool_node or rejects back to assistant
     workflow.add_conditional_edges(
     "guardrail_node",
-    routing_guardrail_node, # Simply point to the function
+    route_after_guardrail,  # Use the routing function
     {
         "tool_node": "tool_node",
-        "assistant_node": "assistant_node"
+        "assistant_node": "assistant_node",
+        END: END
     }
 )
+    log_info("Conditional edges added from guardrail_node to tool_node and assistant_node.", tenant_id, conversation_id)
+    
     # After tool execution, always return to assistant
     workflow.add_edge("tool_node", "assistant_node")
+    log_info("Edge added from tool_node to assistant_node.", tenant_id, conversation_id)
 
     return workflow.compile(checkpointer=checkpointer)
 
 
 def process_message(message_content: str,conversation_id: str,tenant_id: str,employee_id: str,file_path: Optional[str] = None,summarization_request: Any = None) -> dict:
     """Main function to process user messages using the LangGraph agent."""
+
 
     log_info("Starting message processing pipeline", tenant_id, conversation_id)
     log_info(f"Employee ID: {employee_id}-message Content: {message_content}", tenant_id, conversation_id)
@@ -1302,7 +1397,8 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
                     "db_uri": db_uri
                 }
             }
-            output = graph.invoke(State(**initial_state), config=config_dict)    
+            output = graph.invoke(State(**initial_state), config=config_dict) 
+            log_error(f"grapuy Raw State: {output}", tenant_id, conversation_id)
             log_info("LangGraph execution completed", tenant_id, conversation_id)
         except Exception as e:
             log_error(f"LangGraph execution failed: {e}", tenant_id, conversation_id)
@@ -1310,9 +1406,21 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
 
     # --- 9. Response Extraction ---
     current_answer = output.get("leave_application")
+    
+    # Updated extraction logic: ensure we get a string answer regardless of model behavior
+    if isinstance(current_answer, dict) and "answer" in current_answer:
+        current_answer = current_answer["answer"]
+    
+    if not current_answer:
+        # Fallback to extracting from the last message in the graph state
+        messages = output.get("messages", [])
+        if messages:
+            current_answer = extract_final_answer(messages[-1])
+        else:
+            current_answer = "I apologize, but I encountered an internal error processing your request."
+
     logger.info(f"LLM response Process message : {current_answer}")
-    # Updated key per your requirement: leave_application instead of submission_result
-    metadata = output.get("metadata")
+    metadata = output.get("metadata", {})
 
     if current_answer:
         # If it's a dict (from our structured Answer model), extract the specific 'answer' string
