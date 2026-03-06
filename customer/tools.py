@@ -173,12 +173,12 @@ def fetch_available_leave_types_tool(config: RunnableConfig, **kwargs):
     tenant_id = config["configurable"].get("tenant_id")
     db_uri = config["configurable"].get("db_uri")
     
-    logger.info(f"Fetching available leave types for employee: {emp_id} from tenant: {tenant_id}", config)
+    log_info(f"Fetching available leave types for employee: {emp_id} from tenant: {tenant_id}", tenant_id, "unknown")
 
     try:
         # Validate db_uri is available
         if not db_uri:
-            logger.error(f"No database URI available for tenant {tenant_id}", config)
+            log_error(f"No database URI available for tenant {tenant_id}", tenant_id, "unknown")
             return ToolMessage(content="Error: Database configuration missing.", tool_call_id=tid)
 
         # Ensure PostgreSQL URI uses postgresql:// prefix
@@ -208,7 +208,7 @@ def fetch_available_leave_types_tool(config: RunnableConfig, **kwargs):
                     # Extract leave type names
                     leave_names = [row[1] for row in leave_types]  # row[1] is the name column
                     result_text = f"The following leave types are available: {', '.join(leave_names)}. Which one would you like to apply for?"
-                    logger.info(f"The result text from the fetch_available_leave_types_tool: {result_text}")
+                    log_info(f"The result text from the fetch_available_leave_types_tool: {result_text}", tenant_id, "unknown")
                     return ToolMessage(content=result_text, tool_call_id=tid)
                 else:
                     return ToolMessage(content="No leave types are currently configured for your tenant.", tool_call_id=tid)
@@ -216,7 +216,7 @@ def fetch_available_leave_types_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-        logger.info(f"Failed to fetch leave types from database: {str(e)}", config)
+        log_info(f"Failed to fetch leave types from database: {str(e)}", tenant_id, "unknown")
         return ToolMessage(content=f"Error retrieving leave types: {str(e)}", tool_call_id=tid)
 
 
@@ -234,10 +234,11 @@ def validate_leave_balance_tool(config: RunnableConfig, **kwargs):
     year = kwargs.get('year')
     num_days = kwargs.get('numOfDays')
     
-    tenant_id = config["configurable"].get("tenant_id")
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
     db_uri = config["configurable"].get("db_uri")
     
-    logger.info(f"Validating leave balance for employee: {emp_id} (Type: {leave_type_name})", config)
+    log_info(f"Validating leave balance for employee: {emp_id} (Type: {leave_type_name})", tenant_id, conversation_id)
 
     try:
         if not db_uri:
@@ -296,7 +297,7 @@ def validate_leave_balance_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-        logger.error(f"Failed to validate leave balance: {str(e)}", config)
+        log_error(f"Failed to validate leave balance: {str(e)}", tenant_id, conversation_id)
         return ToolMessage(content=f"Error validating leave balance: {str(e)}", tool_call_id=tid)
 
 
@@ -308,7 +309,8 @@ def submit_leave_application_tool(config: RunnableConfig, **kwargs):
     """
     tid = kwargs.get('current_tool_id') or "unknown_id"
     emp_email = config["configurable"].get("employee_id")
-    tenant_code = config["configurable"].get("tenant_id")
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
     db_uri = config["configurable"].get("db_uri")
     
     # Extract fields from kwargs
@@ -318,10 +320,11 @@ def submit_leave_application_tool(config: RunnableConfig, **kwargs):
     reason = kwargs.get('leaveReason') or ""
     relief_name = kwargs.get('workAssigneeRequest')
     
-    logger.info(f"Submitting leave application for: {emp_email} (Type: {lt_name})", config)
+    log_info(f"Submitting leave application for: {emp_email} (Type: {lt_name})", tenant_id, conversation_id)
 
     try:
         if not db_uri:
+            log_error("Database configuration missing.", tenant_id, conversation_id)
             return ToolMessage(content="Error: Database configuration missing.", tool_call_id=tid)
 
         if db_uri.startswith("postgres://"):
@@ -417,7 +420,7 @@ def submit_leave_application_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-        logger.error(f"Failed to submit leave application: {str(e)}", config)
+        log_error(f"Failed to submit leave application: {str(e)}", tenant_id, conversation_id)
         return ToolMessage(content=f"Error submitting application: {str(e)}", tool_call_id=tid)
 
 
@@ -436,7 +439,10 @@ def prepare_leave_application_tool(config: RunnableConfig, **kwargs):
     contact = kwargs.get("contactNoWhileOnLeave")
     email = kwargs.get("emailWhileOnLeave")
 
-    logger.info(f"Preparing application for Year {leave_year}. Reliever: {reliever}", config)
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
+    
+    log_info(f"Preparing application for Year {leave_year}. Reliever: {reliever}", tenant_id, conversation_id)
 
     # 1. Date Format Validation (DDMMYYYY)
     date_fmt = "%d%m%Y"
@@ -457,7 +463,7 @@ def prepare_leave_application_tool(config: RunnableConfig, **kwargs):
             tool_call_id=tid
         )
 
-    logger.info(f"Calculated resumption date as {resumption_str}", config)
+    log_info(f"Calculated resumption date as {resumption_str}", tenant_id, conversation_id)
 
     # 3. Update State
     return Command(
@@ -489,7 +495,9 @@ def calculate_num_of_days_tool(startDate: str, endDate: str, holidays: List[str]
     Calculates the actual number of leave days by skipping weekends and 
     a provided list of public holidays.
     """
-    logger.info(f"Calculating business days between {startDate} and {endDate}", config)
+    tenant_id = config.get("configurable", {}).get("tenant_id", "unknown") if config else "unknown"
+    conversation_id = config.get("configurable", {}).get("conversation_id", "unknown") if config else "unknown"
+    log_info(f"Calculating business days between {startDate} and {endDate}", tenant_id, conversation_id)
     
     try:
         # 1. Parse string dates to date objects
@@ -515,13 +523,13 @@ def calculate_num_of_days_tool(startDate: str, endDate: str, holidays: List[str]
                 
             current_day += timedelta(days=1)
 
-        logger.info(f"Final calculation: {total_days} business days", config)
+        logger.debug(f"Final calculation: {total_days} business days", config)
 
         # 4. Return structured response
         return CalculateDaysResponse(numOfDays=total_days)
 
     except Exception as e:
-        logger.error("Error calculating leave days", config, exc=True)
+        log_debug(f"Error calculating leave days: {e}", tenant_id, conversation_id)
         # Fallback to a standard diff if parsing fails, or return 0
         return CalculateDaysResponse(numOfDays=0)
 
@@ -538,10 +546,11 @@ def search_job_opportunities_tool(config: RunnableConfig, **kwargs):
     tid = kwargs.get('current_tool_id')
     if not tid:
         tid = "unknown_id"
-    tenant_id = config["configurable"].get("tenant_id")
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
     db_uri = config["configurable"].get("db_uri")
 
-    logger.info(f"Searching jobs for tenant {tenant_id} using db_uri {db_uri}", config)
+    log_info(f"Searching jobs for tenant {tenant_id} using db_uri {db_uri}", tenant_id, conversation_id)
 
     try:
         if not db_uri:
@@ -582,7 +591,7 @@ def search_job_opportunities_tool(config: RunnableConfig, **kwargs):
 
                 result = conn.execute(final_query, params)
                 rows = result.fetchall()
-                logger.info(f"The rows from the search_job_opportunities_tool: {rows}")
+                log_info(f"The rows from the search_job_opportunities_tool: {rows}", tenant_id, conversation_id)
 
                 jobs_found = []
                 for row in rows:
@@ -595,15 +604,15 @@ def search_job_opportunities_tool(config: RunnableConfig, **kwargs):
 
                 if not jobs_found:
                     result_text = "No open internal positions match those criteria at the moment."
-                    logger.info(f"The result text from the search_job_opportunities_tool: {result_text}")
+                    log_info(f"The result text from the search_job_opportunities_tool: {result_text}", tenant_id, conversation_id)
                 else:
                     result_text = f"Found {len(jobs_found)} opportunities: {jobs_found}"
-                    logger.info(f"The result text from the search_job_opportunities_tool: {result_text}")
+                    log_info(f"The result text from the search_job_opportunities_tool: {result_text}", tenant_id, conversation_id)
                 return ToolMessage(content=result_text, tool_call_id=tid)
         finally:
             engine.dispose()
     except Exception as e:
-        logger.error(f"Job search failed: {str(e)}", config)
+        log_error(f"Job search failed: {str(e)}", tenant_id, conversation_id)
         return f"Error searching jobs: {str(e)}"
 @tool("fetch_leave_status_tool", args_schema=LeaveStatusRequest)
 def fetch_leave_status_tool(config: RunnableConfig, **kwargs):
@@ -611,10 +620,11 @@ def fetch_leave_status_tool(config: RunnableConfig, **kwargs):
     
     tid = kwargs.get('current_tool_id') or "unknown_id"
     emp_email = config["configurable"].get("employee_id")
-    tenant_code = config["configurable"].get("tenant_id")
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
     db_uri = config["configurable"].get("db_uri")
 
-    logger.info(f"Fetching leave status for: {emp_email}", config)
+    log_info(f"Fetching leave status for: {emp_email}", tenant_id, conversation_id)
 
     try:
         if not db_uri:
@@ -691,7 +701,7 @@ def fetch_leave_status_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-        logger.error(f"Failed to fetch leave status: {str(e)}", config)
+        log_error(f"Failed to fetch leave status: {str(e)}", tenant_id, conversation_id)
         return ToolMessage(content=f"Error fetching leave status: {str(e)}", tool_call_id=tid)
 
 
@@ -705,10 +715,13 @@ def search_travel_deals_tool(config: RunnableConfig, **kwargs):
     start = kwargs.get('departureDate')
     end = kwargs.get('returnDate')
 
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
+    
     # Construct a high-quality search query for Tavily
     query = f"cheapest flights and top rated hotels in {dest} from {start} to {end} for vacation"
     
-    logger.info(f"Tavily searching travel deals: {query}", config)
+    log_info(f"Tavily searching travel deals: {query}", tenant_id, conversation_id)
 
     try:
         # Execute Tavily Search
@@ -738,7 +751,8 @@ def create_customer_profile_tool(config: RunnableConfig, **kwargs):
     Generates a unique 10-digit account number and returns it.
     """
     tid = kwargs.get('current_tool_id') or "unknown_id"
-    tenant_code = config["configurable"].get("tenant_id")
+    tenant_id = config["configurable"].get("tenant_id", "unknown")
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
     db_uri = config["configurable"].get("db_uri")
     
     first_name = kwargs.get('first_name')
@@ -750,10 +764,11 @@ def create_customer_profile_tool(config: RunnableConfig, **kwargs):
     occupation = kwargs.get('occupation') or "Not Specified"
     nationality = kwargs.get('nationality') or "Nigeria"
     
-    logger.info(f"Creating customer profile for: {first_name} {last_name}", config)
+    log_info(f"Creating customer profile for: {first_name} {last_name}", tenant_id, conversation_id)
 
     try:
         if not db_uri:
+            log_error("Database configuration missing.", tenant_id, conversation_id)
             return ToolMessage(content="Error: Database configuration missing.", tool_call_id=tid)
 
         if db_uri.startswith("postgres://"):
@@ -809,7 +824,7 @@ def create_customer_profile_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-        logger.error(f"Failed to create customer profile: {str(e)}", config)
+        log_error(f"Failed to create customer profile: {str(e)}", tenant_id, conversation_id)
         return ToolMessage(content=f"Error creating customer profile: {str(e)}", tool_call_id=tid)
 
 
@@ -923,13 +938,15 @@ def get_customer_details_tool(config: RunnableConfig, **kwargs):
     """
     Retrieves a customer's details from the PostgreSQL database using phone number, email, or account number.
     """
-    log_info("get_customer_details_tool invoked with arguments: ", config, kwargs)
-    tid = kwargs.get('current_tool_id') or "unknown_id"
     tenant_code = config["configurable"].get("tenant_id")
-    db_uri = config["configurable"].get("db_uri")
-    
+    tenant_id = tenant_code if tenant_code else "unknown"
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
     val = kwargs.get('phone_or_email')
     acc_num = kwargs.get('account_number')
+    log_info(f"get_customer_details_tool invoked with args: {val}, {acc_num}", tenant_id, conversation_id)
+    tid = kwargs.get('current_tool_id') or "unknown_id"
+    db_uri = config["configurable"].get("db_uri")
+    
     
     if not val and not acc_num:
         return ToolMessage(content="Please provide an email, phone number, or account number.", tool_call_id=tid)
@@ -977,7 +994,7 @@ def get_customer_details_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-        logger.error(f"Failed to retrieve customer details: {str(e)}", config)
+        log_error(f"Failed to retrieve customer details: {str(e)}", tenant_id, conversation_id)
         return ToolMessage(content=f"Error retrieving customer details: {str(e)}", tool_call_id=tid)
 
 @tool("update_customer_tool", args_schema=UpdateCustomerProfileInput)
@@ -985,27 +1002,31 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
     """
     Updates the customer's profile details (phone, email, occupation, etc.) in the PostgreSQL database.
     """
-    log_info("update_customer_tooll invoked with arguments: ", config, kwargs)
+    tenant_code = config["configurable"].get("tenant_id")
+    tenant_id = tenant_code if tenant_code else "unknown"
+    conversation_id = config["configurable"].get("conversation_id", "unknown")
+    target_email = kwargs.get('email') or config["configurable"].get("employee_id")
+    target_phone = kwargs.get('phone_number')
+    log_info(f"update_customer_tool invoked with args: {target_email}, {target_phone}", tenant_id, conversation_id)
 
     tid = kwargs.get('current_tool_id') or "unknown_id"
-    tenant_code = config["configurable"].get("tenant_id")
     db_uri = config["configurable"].get("db_uri")
     
     # We need a way to identify which customer to update. 
     # Since this is likely the current user, we assume their email/phone is in the context or provided.
     # For now, we'll use the provided email or phone if available, or fall back to the config employee_id (email).
-    target_email = kwargs.get('email') or config["configurable"].get("employee_id")
-    target_phone = kwargs.get('phone_number')
+    
 
     update_data = {k: v for k, v in kwargs.items() if v is not None and k != 'current_tool_id'}
     
     if not update_data:
         return ToolMessage(content="No update information was provided.", tool_call_id=tid)
 
-    logger.info(f"Updating customer profile for: {target_email or target_phone}", config)
+    log_info(f"Updating customer profile for: {target_email or target_phone}", tenant_id, conversation_id)
 
     try:
         if not db_uri:
+            log_error("Database configuration missing.", tenant_id, conversation_id)
             return ToolMessage(content="Error: Database configuration missing.", tool_call_id=tid)
 
         if db_uri.startswith("postgres://"):
@@ -1048,7 +1069,7 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
             engine.dispose()
 
     except Exception as e:
-       logger.error(f"Failed to update customer profile: {str(e)}", config)
+       log_error(f"Failed to update customer profile: {str(e)}", tenant_id, conversation_id)
        return ToolMessage(content=f"Error updating customer profile: {str(e)}", tool_call_id=tid)
 
 
@@ -1060,6 +1081,9 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
 )
 def sql_query_tool(query: str, state: dict) -> dict:
     """Executes a SQL query using the pre-initialized SQL agent and returns the result."""
+    tenant_config = state.get("tenant_config", {})
+    tenant_id = tenant_config.get("tenant_id", "unknown")
+    conversation_id = state.get("conversation_id", "unknown")
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
@@ -1125,6 +1149,8 @@ def pdf_retrieval_tool(query: str, state: dict) -> dict:
         dict: A dictionary containing 'pdf_content'. This will hold the search
               results on success, or a structured error message on failure.
     """
+    tenant_id = state.get("tenant_id", "unknown")
+    conversation_id = state.get("conversation_id", "unknown")
     tenant_id = state.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
     log_info(f"pdf_retrieval_tool invoked with query: {query}", tenant_id, conversation_id)
@@ -1362,7 +1388,11 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
     """
     Generates a data visualization based on a natural language query.
     """
-    logging.info(f"--- Generating Visualization for query: '{query}' ---")
+    tenant_config = state.get("tenant_config", {})
+    tenant_id = tenant_config.get("tenant_id", "unknown")
+    conversation_id = state.get("conversation_id", "unknown")
+    
+    log_info(f"Generating Visualization for query: '{query}'", tenant_id, conversation_id)
     analysis_text = "" # Initialize in case of early failure
     try:
         # Step 2: Execute the query with Pandas
@@ -1414,21 +1444,21 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
         else:
             sql_query = raw_sql_query
         
-        logging.info(f"Generated SQL: {sql_query}")
+        log_info(f"Generated SQL: {sql_query}", tenant_id, conversation_id)
 
         # Step 2: Execute the query with Pandas
         engine = create_engine(db_uri)
         df = pd.read_sql_query(sql_query, con=engine)
         
         if df.empty:
-            logging.warning("Query returned no data.")
+            log_warning("Query returned no data.", tenant_id, conversation_id)
             return {"visualization_result": {"analysis": "I found no data to visualize for your request.", "image_base64": None}}
 
         # --- ENHANCED LOGGING: Log DataFrame details ---
         buffer = io.StringIO()
         df.info(buf=buffer)
         df_info_str = buffer.getvalue()
-        logging.info(f"--- DataFrame Details ---\nHead:\n{df.head().to_string()}\nInfo:\n{df_info_str}")
+        log_info(f"--- DataFrame Details ---\nHead:\n{df.head().to_string()}\nInfo:\n{df_info_str}", tenant_id, conversation_id)
 
         # Step 3: Determine the best chart type
         df_info_for_prompt = f"Data Columns: {df.columns.tolist()}\nData Head:\n{df.head().to_string()}"
@@ -1439,12 +1469,12 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
         Data Summary:\n{df_info_for_prompt}
         """
         chart_type = llm.invoke(chart_selection_prompt).content.strip().lower()
-        logging.info(f"LLM chose chart type: '{chart_type}'")
+        log_info(f"LLM chose chart type: '{chart_type}'", tenant_id, conversation_id)
 
         # Step 4: Get textual analysis from the LLM
         analysis_prompt = f"Analyze this data and provide a brief, insightful summary based on the user's original request: '{query}'.\n\nData:\n{df.to_csv(index=False)}"        
         analysis_text = llm.invoke(analysis_prompt).content
-        logging.info(f"Generated Analysis: {analysis_text[:200]}...") # Log a snippet
+        log_info(f"Generated Analysis: {analysis_text[:200]}...", tenant_id, conversation_id) # Log a snippet
 
         # Step 5: Generate the plot using intelligent chart selection
         plt.style.use('seaborn-v0_8-whitegrid')
@@ -1486,7 +1516,7 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
             ax.set_ylabel('')
         
         else: # Fallback
-            logging.warning(f"Could not find a perfect chart match for type '{chart_type}'. Using generic plot.")
+            log_warning(f"Could not find a perfect chart match for type '{chart_type}'. Using generic plot.", tenant_id, conversation_id)
             df.plot(ax=ax)
        
         # Formatting common to all charts
@@ -1500,7 +1530,7 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
         buffer.seek(0)
         image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
         plt.close(fig)
-        logging.info(f"Successfully generated plot image (Base64 length: {len(image_base64)}).")
+        log_info(f"Successfully generated plot image (Base64 length: {len(image_base64)}).", tenant_id, conversation_id)
 
         return {
             "visualization_result": {
@@ -1511,7 +1541,7 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
     
     except Exception as e:
         # --- ENHANCED LOGGING: Log the full exception traceback ---
-        logging.error("Error in visualization tool", exc_info=True)
+        log_error(f"Error in visualization tool: {e}", tenant_id, conversation_id)
         analysis_text_on_error = analysis_text if analysis_text else f"Sorry, I encountered an unrecoverable error: {e}"
         return {"visualization_result": {"analysis": analysis_text_on_error, "image_base64": None}}
 
@@ -1523,7 +1553,8 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
 
 def get_column_types(df: pd.DataFrame):
     """Helper function to identify column types for plotting."""
-    logging.info(f"--- get_column_types for query: '{df}' ---")
+    # Note: get_column_types is a helper and doesn't have easy access to tenant_id/conversation_id 
+    # without passing them through. We'll leave this one as a simple debug or remove it.
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
     date_cols = df.select_dtypes(include=['datetime', 'datetimetz']).columns.tolist()

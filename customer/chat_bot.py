@@ -270,8 +270,10 @@ You operate in three modes:
 Your response must be:
 - **Final**: No follow-up questions or uncertainty.
 - **Clear and Polite**: Use emotionally intelligent language, especially if the user expresses frustration or confusion.
-- **Context-Aware**: Avoid mentioning internal systems (e.g., database names or SQL sources) unless explicitly requested.
+- **Context-Aware**: Avoid mentioning internal systems (e.g., database names or SQL sources) .
 - **Structured**: Always return your answer in the following JSON format.
+- **Structured**: use naira sign whne currency us required 
+
 """
 
 Base = declarative_base()
@@ -800,6 +802,7 @@ def routing_guardrail_node(state: State):
         return {"next_node": END}
 
     user_input = next((m.content for m in reversed(state["messages"][:-1]) if hasattr(m, "content")), "").lower()
+    logger.info(f"Guardrail checking tool calls against user input: {user_input}")
 
     for call in state["messages"][-1].tool_calls:
         tool_name = call["name"]
@@ -836,7 +839,7 @@ def tool_node(state: State) -> dict:
     """Performs the tool call, injecting state for specific tools if required."""
 
     # 1. Extract context for logging
-    tenant_config = state["tenant_config"]
+    tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
     log_info("Tool node activated", tenant_id, conversation_id)
@@ -1006,7 +1009,7 @@ def assistant_node(state: State, config: RunnableConfig):
 
     PROTOCOL 4: DATA ANALYTICS
     - Use 'sql_query_tool' for data inquiries. Provide actionable insights.
-    - Use 'generate_visualization_tool' ONLY when explicitly asked to 'plot', 'chart', 'graph', or 'visualize'.
+    - Use 'generate_visualization_tool'  when user  asked to 'plot', 'chart', 'graph', or 'visualize'.
 
     PROTOCOL 5: PROFILE UPDATES
     - Use 'update_customer_tool' or 'update_employee_profile_tool'.
@@ -1081,53 +1084,103 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
     logger.info("Invoking LLM with tools for assistant response generation.")
     response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + messages)
     logger.info(f"LLM RAW ALukeee response Assitant Node: {response}")
-    
-    if hasattr(response, "tool_calls") and response.tool_calls:
-        logger.info(f"Tool calls foundAtejjdy: {response.tool_calls}")
-        return {"messages": [response]}  # keep the AIMessage intact
-    
-
-    # Check 2: JSON-wrapped Tool Calls (The "Ollama Fallback")
-    if isinstance(response.content, str) and 'tool_calls' in response.content:
-
+    # 2. Check for "Embedded" Tool Calls (The Ollama Fix)
+    if isinstance(response.content, str) and not response.tool_calls:
         try:
-            logger.info(f"Tool calls foundAtejjdss: {response.tool_calls}")
-            # Clean markdown if present
-            clean_content = re.sub(r"^```json\s*|\s*```$", "", response.content.strip(), flags=re.MULTILINE)
-            parsed = json.loads(clean_content)
-            
-            if "tool_calls" in parsed:
-                # We manually reconstruct the tool_calls attribute so the rest of the graph works
-                response.tool_calls = parsed["tool_calls"]
-                # Ensure each call has an 'id' which LangGraph requires
-                for call in response.tool_calls:
-                    if 'id' not in call:
-                        call['id'] = str(uuid.uuid4())
-                    # Rename 'arguments' to 'args' if the LLM used the wrong key
-                    if 'arguments' in call and 'args' not in call:
-                        call['args'] = call.pop('arguments')
+            # Search for JSON-like patterns in the text
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group())
                 
-                return {"messages": [response]}
+                # Map various LLM hallucinations to standard LangChain format
+                t_name = parsed.get("tool") or parsed.get("name") or parsed.get("tool_name")
+                t_args = parsed.get("arguments") or parsed.get("args") or parsed.get("parameters") or {}
+                
+                if t_name:
+                    logger.info(f"Fixed: Extracted '{t_name}' from raw text content.")
+                    # IMPORTANT: Manually populate the tool_calls attribute
+                    response.tool_calls = [{
+                        "name": t_name,
+                        "args": t_args,
+                        "id": f"call_{uuid.uuid4().hex[:12]}",
+                        "type": "tool_call"
+                    }]
         except Exception as e:
-            logger.error(f"Failed to manually parse tool calls: {e}")
+            logger.error(f"Manual parsing failed: {e}")
+        
+        # 3. Now LangGraph will see response.tool_calls and route to tool_node
+        if response.tool_calls:
+            return {"messages": [response]}
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            logger.info(f"Tool calls foundAtejjdy: {response.tool_calls}")
+            return {"messages": [response]}  # keep the AIMessage intact
+        
 
-    # --- END OF NEW PARSING ---
+        # Check 2: JSON-wrapped/Embedded Tool Calls (The "Ollama Fallback")
+        if isinstance(response.content, str):
+            try:
+                # Look for JSON blocks even if mixed with text
+                json_blocks = re.findall(r"\{.*?\}", response.content, flags=re.DOTALL)
+                extracted_calls = []
+                
+                for block in json_blocks:
+                    try:
+                        parsed = json.loads(block)
+                        if isinstance(parsed, dict):
+                            # Support various formats:
+                            # 1. Standard {'name': ..., 'args': ...}
+                            # 2. Ollama Cloud {'tool': ..., 'parameters': ...}
+                            # 3. List wrapper {'tool_calls': [...]}
+                            
+                            if "tool_calls" in parsed and isinstance(parsed["tool_calls"], list):
+                                extracted_calls.extend(parsed["tool_calls"])
+                            else:
+                                extracted_calls.append(parsed)
+                    except:
+                        continue
+                
+                if extracted_calls:
+                    valid_calls = []
+                    for call in extracted_calls:
+                        # Detect tool name from various possible keys
+                        t_name = call.get("name") or call.get("tool") or call.get("tool_name")
+                        if not t_name: continue
+                        
+                        # Detect arguments from various possible keys
+                        t_args = call.get("args") or call.get("parameters") or call.get("arguments") or {}
+                        
+                        valid_calls.append({
+                            "name": t_name,
+                            "args": t_args,
+                            "id": call.get("id") or str(uuid.uuid4()),
+                            "type": "tool_call"
+                        })
+                    
+                    if valid_calls:
+                        logger.info(f"Manually extracted {len(valid_calls)} tool calls from mixed content.")
+                        response.tool_calls = valid_calls
+                        # Also clean up the content to keep only the tool call if it's primarily a tool request
+                        return {"messages": [response]}
+            except Exception as e:
+                logger.error(f"Failed to robustly parse tool calls from content: {e}")
 
-    final_answer = extract_final_answer(response)
-    logger.info(f"LLM response Assitant Node: {final_answer}")
-    return {"messages": [AIMessage(content=final_answer)]}
+        # --- END OF NEW PARSING ---
+
+        final_answer = extract_final_answer(response)
+        logger.info(f"LLM response Assitant Node: {final_answer}")
+        return {"messages": [AIMessage(content=final_answer)]}
 
 
 
 
-    # final_answer = extract_final_answer(response)
-    # logger.info(f"LLM response Assitant Node: {final_answer}")
-    # logger.info(f"Final Output Raw Aliko: {messages}")
-    
-    # return {"messages": [AIMessage(content=final_answer)]}
+        # final_answer = extract_final_answer(response)
+        # logger.info(f"LLM response Assitant Node: {final_answer}")
+        # logger.info(f"Final Output Raw Aliko: {messages}")
+        
+        # return {"messages": [AIMessage(content=final_answer)]}
 
 
-    # return {"messages": [final_answer]}
+        # return {"messages": [final_answer]}
 
 
 def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
