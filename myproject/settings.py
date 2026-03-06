@@ -155,24 +155,42 @@ WSGI_APPLICATION = "myproject.wsgi.application"
 # settings.py
 
 # 1. Try to get the URL from environment
-env_db_url = os.getenv("DATABASE_URL1")
+env_db_url = os.getenv("DATABASE_URL")
 
 if env_db_url:
-    DATABASES = {
+    DATABASES1 = {
         'default': dj_database_url.config(default=env_db_url, conn_max_age=600)
     }
 else:
     # 2. Hardcoded Fallback (Your Postgres Server)
-    DATABASES = {
+    DATABASES1 = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': 'whatsapp-1',
-            'USER': 'postgres',
+            'USER': 'postgres1',
             'PASSWORD': '851fa108b40cc528ea77',
             'HOST': '147.182.194.8',
             'PORT': '5431',
         }
     }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+                "timeout": 20,  # default is 5 seconds
+
+
+    },
+    'local_pg': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'hris',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
 
 # 3. Add this temporary debug line to your terminal
 print(f"--- DEBUG: Using Database Engine: {DATABASES['default'].get('ENGINE')} on {DATABASES['default'].get('HOST')} ---")

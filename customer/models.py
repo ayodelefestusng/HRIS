@@ -32,6 +32,10 @@ import logging
 logger = logging.getLogger(__name__)
 # Extending Django's User model for CRM-specific fields
 class CRMUser(TenantModel):
+    """
+    Represents an internal CRM user with specific roles and permissions.
+    Extends TenantModel to support multi-tenancy.
+    """
     # Add CRM-specific fields here, e.g.
     title = models.CharField(max_length=100, blank=True)
     department = models.CharField(max_length=100, blank=True)
@@ -50,6 +54,10 @@ class CRMUser(TenantModel):
 # --- Base CRM Objects ---
 
 class Account(TenantModel):
+    """
+    Represents a company or organization that is a business entity in the CRM.
+    Stores contact information, industry details, and audit fields.
+    """
     INDUSTRY_CHOICES = [
         ('tech', 'Technology'),
         ('finance', 'Finance'),
@@ -94,6 +102,10 @@ class Account(TenantModel):
         return self.name
 
 class Contact(TenantModel):
+    """
+    Represents an individual person associated with an Account.
+    Used for tracking personal interaction details like email, phone, and title.
+    """
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(blank=True, null=True, unique=True) # Unique if strict
@@ -126,6 +138,10 @@ class Contact(TenantModel):
 #### 2. `sales/models.py` - Leads & Opportunities
 
 class Lead(TenantModel):
+    """
+    Represents a potential customer or sales prospect before they are qualified.
+    Contains basic contact info and source tracking.
+    """
     LEAD_STATUS_CHOICES = [
         ('new', 'New'),
         ('contacted', 'Contacted'),
@@ -167,6 +183,10 @@ class Lead(TenantModel):
         return f"{self.first_name} {self.last_name} ({self.company})"
 
 class Opportunity(WorkflowCompatibleModel):
+    """
+    Represents a qualified sales deal or potential revenue-generating event.
+    Tracked through various stages of the sales pipeline via workflow.
+    """
     SALES_STAGE_CHOICES = [
         ('qualification', 'Qualification'),
         ('needs_analysis', 'Needs Analysis'),
@@ -265,6 +285,9 @@ VALID_PREFIXES = {
 
 # 📞 Validator for Nigerian phone prefixes
 def validate_nigerian_prefix(value):
+    """
+    Validates that the provided phone number starts with a valid Nigerian mobile prefix.
+    """
     if not value.isdigit():
         raise ValidationError("Phone number must contain only digits.")
     if len(value) != 11:
@@ -275,6 +298,9 @@ def validate_nigerian_prefix(value):
 
 # 🔢 Validator for 10-digit account number
 def validate_account_number(value):
+    """
+    Validates that the provided bank account number is exactly 10 digits.
+    """
     if not value.isdigit():
         raise ValidationError("Account number must contain only digits.")
     if len(value) != 10:
@@ -282,6 +308,10 @@ def validate_account_number(value):
 
 
 class Customer(TenantModel):
+    """
+    Represents an individual retail or commercial banking customer.
+    Stores personal identification, contact details, account number, and branch association.
+    """
     customer_id = models.CharField(max_length=20, unique=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -311,6 +341,10 @@ class Customer(TenantModel):
             raise ValueError("Account number must be exactly 10 digits.")
 
 class Transaction(TenantModel):
+    """
+    Records a financial activity performed by a Customer.
+    Tracks amount, type (deposit, transfer, etc.), and the channel used (ATM, Mobile, etc.).
+    """
     TRANSACTION_TYPES = [
         ("deposit", "Deposit"),
         ("withdrawal", "Withdrawal"),
@@ -341,6 +375,10 @@ class Transaction(TenantModel):
 
 
 class LoanReport(TenantModel):
+    """
+    Stores snapshots of customer loan balances and repayment statuses.
+    Used for tracking portfolio health and individual loan performance.
+    """
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     loan_account_number = models.CharField(max_length=20, unique=True)
     amount_collected = models.DecimalField(max_digits=12, decimal_places=2)
@@ -355,6 +393,10 @@ class LoanReport(TenantModel):
 
  
 class BranchPerformance(TenantModel):
+    """
+    Aggregates performance metrics for a specific bank branch.
+    Tracks total customers, transaction counts, and revenue generated over time.
+    """
     branch = models.ForeignKey(Location, on_delete=models.CASCADE)
     total_customers = models.PositiveIntegerField()
     total_transactions = models.PositiveIntegerField()
@@ -368,6 +410,10 @@ class BranchPerformance(TenantModel):
 
 
 class Prompt(TenantModel):
+    """
+    Stores system-level prompt templates used by the AI chatbot.
+    Allows for dynamic adjustment of bot personality and behavior per tenant.
+    """
     name = models.CharField(max_length=100, default="standard")
     is_hum_agent_allow_prompt = models.TextField(blank=True, null=True)
     no_hum_agent_allow_prompt = models.TextField(blank=True, null=True)
@@ -377,6 +423,10 @@ class Prompt(TenantModel):
 
 
 class LLM(TenantModel):
+    """
+    Configuration for Large Language Model instances (e.g., Gemini, Ollama).
+    Maps tenant-specific AI settings to the underlying model provider.
+    """
     
     name = models.CharField(max_length=100, null=False) # Ollama, Gemini
     model = models.CharField(max_length=100, null=False)
@@ -390,6 +440,10 @@ class LLM(TenantModel):
     
 
 class Tenant_AI(TenantModel):
+    """
+    Central configuration model for a tenant's AI chatbot experience.
+    Defines thresholds, tones, target channels, and database connection strings.
+    """
 
     prompt_template = models.ForeignKey(Prompt, on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -417,6 +471,10 @@ class Tenant_AI(TenantModel):
 
 
 class Conversation(TenantModel):
+    """
+    Represents a single chat session between a user and the AI.
+    Used for tracking message history, session duration, and generating summaries.
+    """
 
     session_id = models.CharField(max_length=255, unique=True, db_index=True)
     started_at = models.DateTimeField(default=datetime.utcnow)
@@ -430,6 +488,10 @@ class Conversation(TenantModel):
 
 
 class Message(models.Model):
+    """
+    An individual message within a Conversation.
+    Stores the text content, sender (User vs Bot), and any file attachments.
+    """
     conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
     text = models.TextField()
     is_user = models.BooleanField()

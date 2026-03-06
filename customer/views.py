@@ -187,7 +187,7 @@ class ChatView(View):
                 tenant_id = data.get("tenant_id")
                 summarization_request = data.get("summarization_request") == True
                 user_msg_attach = None
-                employee_id=data.get("employee_id","ayodelefes@gmail.com")
+                employee_id=data.get("employee_id","obinna.kelechi.adewale@dignityconcept.tech")
 
             else:
                 logger.info("Received non-JSON data")

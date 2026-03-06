@@ -342,6 +342,8 @@ class LeaveBalance(TenantModel):
     class Meta:
         unique_together = ("employee", "leave_type", "year", "tenant")
 
+
+
 class PublicHoliday(TenantModel):
     name = models.CharField(max_length=150)
     date = models.DateField()

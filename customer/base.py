@@ -113,10 +113,11 @@ class PreparedLeaveApplication(BaseModel):
     year: int
     
 class ValidateLeaveBalanceRequest(BaseModel):
-    employeeID: str
-    leaveTypeID: str
-    year: int
-    numOfDays: int
+    employeeID: str = Field(..., description="The ID of the employee")
+    leaveTypeName: str = Field(..., description="The name of the leave type (e.g., Annual Leave)")
+    leaveTypeID: Optional[str] = Field(None, description="Optional ID of the leave type if known")
+    year: int = Field(..., description="The leave year (e.g., 2025)")
+    numOfDays: int = Field(..., description="The number of days requested for validation")
 
 
 class ValidateLeaveBalanceResponse(BaseModel):
@@ -138,35 +139,27 @@ class CalculateDaysResponse(BaseModel):
 
 class SubmitLeaveApplicationRequest(BaseModel):
     # Core Identification
-    employeeID: str = Field(..., description="The unique ID of the employee applying for leave")
-    leaveTypeID: str = Field(..., description="The unique ID for the specific leave type (e.g., Annual, Sick)")
+    employeeID: str = Field(..., description="The employee ID (or email)")
+    leaveTypeID: Optional[str] = Field(None, description="The unique ID for the leave type")
     leaveTypeName: str = Field(..., description="The human-readable name of the leave type")
     
     # Dates and Duration
     leaveStartDate: str = Field(..., description="Start date in DDMMYYYY format")
     leaveEndDate: str = Field(..., description="End date in DDMMYYYY format")
-    resumptionDate: str = Field(..., description="Date the employee returns to work")
-    year: int = Field(..., description="The calendar year for this leave deduction (e.g., 2024 or 2025)")
+    resumptionDate: str = Field(..., description="Date the employee returns to work (DDMMYYYY)")
+    year: int = Field(..., description="The calendar year for this leave deduction")
     numOfDays: int = Field(..., description="The total number of days being requested")
     
     # Contact and Handover
-    leaveReason: str = Field(..., description="Reason for the leave request")
-    workAssigneeRequest: str = Field(..., description="The name or ID of the relief officer (reliever)")
+    leaveReason: str = Field(..., description="The reason for the leave request")
+    workAssigneeRequest: Optional[str] = Field(None, description="The name or email of the relief officer")
     address: str = Field(..., description="Physical address while on leave")
     contactNo: str = Field(..., description="Phone number while on leave")
     email: str = Field(..., description="Alternative email while on leave")
     
-    # Workflow & Meta
-    supervisorID: str = Field(..., description="The ID of the person who must approve this request")
-    files: Optional[List[str]] = Field(default=[], description="List of document URLs if applicable")
-    
-    # 🔥 INJECTED TRACKING ID
-    # This ensures Pydantic doesn't strip the tool_call_id during the internal pass
+    # Injected tracking
     state: Optional[dict] = Field(None, description="Injected workflow state")
-    current_tool_id: Optional[str] = Field(
-        None, 
-        description="Injected tool call ID for LangGraph response routing"
-    )
+    current_tool_id: Optional[str] = Field(None, description="Injected tool call ID")
 # 1. Update your Schema
 class SearchJobOpportunitiesRequest(BaseModel):
     department: Optional[str] = Field(None, description="Filter by hiring department name")
@@ -219,9 +212,21 @@ class CustomerProfileInput(BaseModel):
     phone: str = Field(..., description="Phone number")
     gender: str = Field(..., description="Gender: male or female")
     date_of_birth: str = Field(..., description="Date of birth YYYY-MM-DD")
+    occupation: Optional[str] = Field(None, description="Customer's occupation")
+    nationality: Optional[str] = Field("Nigeria", description="Customer's nationality")
     current_tool_id: Optional[str] = Field(None)
+
 class CustomerDetailsInput(BaseModel):
-    phone_or_email: str = Field(..., description="Phone number or email address of the customer")
+    phone_or_email: Optional[str] = Field(None, description="Phone number or email address of the customer")
+    account_number: Optional[str] = Field(None, description="The 10-digit bank account number")
+    current_tool_id: Optional[str] = Field(None)
+
+class UpdateCustomerProfileInput(BaseModel):
+    phone_number: Optional[str] = Field(None, description="The new phone number")
+    email: Optional[str] = Field(None, description="The new email address")
+    occupation: Optional[str] = Field(None, description="The new occupation")
+    town_of_residence_id: Optional[int] = Field(None, description="ID of the town of residence Location")
+    branch_id: Optional[int] = Field(None, description="ID of the branch Location")
     current_tool_id: Optional[str] = Field(None)
 
 
