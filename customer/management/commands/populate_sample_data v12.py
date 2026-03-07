@@ -31,12 +31,40 @@ class Command(BaseCommand):
         Account.objects.all().delete()
         Customer.objects.all().delete()
 
-        # --- use existing branches only ---
-        branches = list(Location.objects.filter(name__iendswith="Branch"))
-        if not branches:
-            self.stdout.write(self.style.ERROR("No existing branch locations found!"))
-            return
-        self.stdout.write(self.style.NOTICE(f"Using {len(branches)} existing branch locations."))
+        # --- ensure there are some branches available ----
+        # Branch field should reference Location objects whose name ends with "Branch".
+        # delete any existing branch locations so we start fresh
+        # Location.objects.filter(name__iendswith="Branch").delete()
+        # Location requires a town (and location_id) so we create a generic hierarchy.
+        from org.models import Country, State, Town
+
+        country, _ = Country.objects.get_or_create(name="Nigeria")
+        state, _ = State.objects.get_or_create(name="Generic State", country=country)
+        town, _ = Town.objects.get_or_create(name="Generic Town", state=state)
+
+        sample_branch_names = [
+            "Main Branch",
+            "North Branch",
+            "South Branch",
+            "East Branch",
+            "West Branch",
+        ]
+        branches = []
+        for idx, name in enumerate(sample_branch_names, start=1):
+            loc, created = Location.objects.get_or_create(
+                name=name,
+                defaults={
+                    "location_id": f"BR{idx:03d}",
+                    "town": town,
+                },
+            )
+            branches.append(loc)
+
+        # also include any existing branches matching the filter in case they were added manually
+        extra = list(Location.objects.filter(name__iendswith="Branch").exclude(id__in=[b.id for b in branches]))
+        branches.extend(extra)
+
+        self.stdout.write(self.style.NOTICE(f"Using {len(branches)} branch locations (name ends with 'Branch')."))
 
         # ---- customers ----
         customers = []
@@ -45,8 +73,9 @@ class Command(BaseCommand):
             first = fake.first_name()
             last = fake.last_name()
             email = f"{first.lower()}.{last.lower()}{i}@example.com"
-            phone = "0" + fake.random_element(elements=("809", "817", "818", "909", "908")) + \
-                    f"{fake.random_number(digits=7, fix_len=True):07d}"
+            phone = "0" + fake.random_element(elements=(
+                "809", "817", "818", "909", "908",
+            )) + f"{fake.random_number(digits=7, fix_len=True):07d}"
             account_num = f"{fake.random_number(digits=10, fix_len=True):010d}"
             gender = random.choice(["male", "female"])
             dob = fake.date_of_birth(minimum_age=18, maximum_age=70)
@@ -69,8 +98,6 @@ class Command(BaseCommand):
             customers.append(obj)
         self.stdout.write(self.style.SUCCESS(f"Created {len(customers)} customers."))
 
-        # ... rest of your accounts, contacts, leads, opportunities, transactions, branch performance code unchanged ...    
-        
         # ---- accounts and contacts ----
         accounts = []
         for i in range(50):

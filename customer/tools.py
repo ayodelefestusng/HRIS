@@ -1087,7 +1087,7 @@ def sql_query_tool(query: str, state: dict) -> dict:
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
-    log_info(f"sql_query_tool invoked with query: {query}", tenant_id, conversation_id)
+    log_info(f"sql_query_toolAluike invoked with query: {query}", tenant_id, conversation_id)
     
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
@@ -1130,8 +1130,26 @@ def sql_query_tool(query: str, state: dict) -> dict:
             if full_response_content
             else "No response from SQL agent."
         )
-        log_info(f"SQL query result: {result}", tenant_id, conversation_id)
-        return {"sql_result": result}
+        log_info(f"SQL query result raw: {result}", tenant_id, conversation_id)
+        
+        # Attempt to parse JSON containing 'analysis' and 'data'
+        import json
+        import re
+        parsed_data = None
+        analysis_text = result
+        try:
+            # Look for JSON block if wrapped in markdown
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", result, re.DOTALL)
+            json_str = match.group(1) if match else result
+            
+            parsed = json.loads(json_str)
+            if isinstance(parsed, dict) and 'data' in parsed:
+                parsed_data = parsed['data']
+                analysis_text = parsed.get('analysis', "Here is the data you requested.")
+        except Exception as e:
+            log_warning(f"Could not parse SQL Agent output as JSON: {e}", tenant_id, conversation_id)
+            
+        return {"sql_result": analysis_text, "data": parsed_data}
 
     except Exception as e:
         return {"sql_result": f"Error executing SQL query: {e}"}
@@ -1384,10 +1402,12 @@ def web_search_tool(query: str, state: dict) -> dict:
 
 
 @tool("generate_visualization_tool", args_schema=VisualizationInput, description="Use this tool to create charts, graphs, plots, or any data visualizations. This is the best tool when the user asks to 'plot', 'chart', 'visualize', or 'draw' data.")
-def generate_visualization_tool(query: str, state: dict) -> dict:
+def generate_visualization_tool(query: str, data: Any = None, state: Optional[dict] = None, **kwargs) -> dict:
     """
     Generates a data visualization based on a natural language query.
     """
+    if state is None:
+        state = {}
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
@@ -1395,61 +1415,73 @@ def generate_visualization_tool(query: str, state: dict) -> dict:
     log_info(f"Generating Visualization for query: '{query}'", tenant_id, conversation_id)
     analysis_text = "" # Initialize in case of early failure
     try:
-        # Step 2: Execute the query with Pandas
-        tenant_config = state.get("tenant_config", {})
-        tenant_id = tenant_config.get("tenant_id", "unknown")
-        db_uri = state.get("db_uri") or DB_URI
-        
         from .chat_bot import get_llm_instance
         llm = get_llm_instance()
-        
-        db = TENANT_DBS.get(tenant_id)
-        if not db:
-            from langchain_community.utilities import SQLDatabase
-            db = SQLDatabase.from_uri(db_uri)
-            TENANT_DBS[tenant_id] = db
 
-        # Step 1: Generate SQL from the natural language query (with few-shot prompt)
-        sql_generation_prompt = f"""Given the user's question, create a single, syntactically correct SQL query to retrieve the data needed for a chart.
-                Do not include any other text or explanation, just the SQL query itself.
-
-                Tables available: {db.get_table_info()}
-
-                ### Example ###
-                User question: "Show me the total transaction value for each month this year."
-                SQL Query:
-                ```sql
-                SELECT
-                STRFTIME('%Y-%m', timestamp) AS month,
-                SUM(amount) AS total_value
-                FROM
-                ai_transaction
-                WHERE
-                STRFTIME('%Y', timestamp) = STRFTIME('%Y', 'now')
-                GROUP BY
-                month
-                ORDER BY
-                month;
-                ```
-                ### End Example ###
-
-                User question: "{query}"
-                SQL Query:
-                """
-        raw_sql_query = llm.invoke(sql_generation_prompt).content.strip()
-        
-        match = re.search(r"```(?:sql)?\s*(.*?)\s*```", raw_sql_query, re.DOTALL)
-        if match:
-            sql_query = match.group(1).strip()
+        if data:
+            log_info("Data provided directly to visualization tool. Bypassing SQL generation.", tenant_id, conversation_id)
+            import json
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except:
+                    pass
+            df = pd.DataFrame(data)
+            sql_query = "Data provided directly via tool chaining"
         else:
-            sql_query = raw_sql_query
-        
-        log_info(f"Generated SQL: {sql_query}", tenant_id, conversation_id)
+            # Step 2: Execute the query with Pandas
+            tenant_config = state.get("tenant_config", {})
+            tenant_id = tenant_config.get("tenant_id", "unknown")
+            db_uri = tenant_config.get("db_uri") or DB_URI
+            log_info(f"Database URI: '{db_uri}'", tenant_id, conversation_id)
+            
+            db = TENANT_DBS.get(tenant_id)
+            if not db:
+                from langchain_community.utilities import SQLDatabase
+                db = SQLDatabase.from_uri(db_uri)
+                TENANT_DBS[tenant_id] = db
 
-        # Step 2: Execute the query with Pandas
-        engine = create_engine(db_uri)
-        df = pd.read_sql_query(sql_query, con=engine)
-        
+            # Step 1: Generate SQL from the natural language query (with few-shot prompt)
+            sql_generation_prompt = f"""Given the user's question, create a single, syntactically correct SQL query to retrieve the data needed for a chart.
+                    Do not include any other text or explanation, just the SQL query itself.
+
+                    Tables available: {db.get_table_info()}
+
+                    ### Example ###
+                    User question: "Show me the total transaction value for each month this year."
+                    SQL Query:
+                    ```sql
+                    SELECT
+                    STRFTIME('%Y-%m', timestamp) AS month,
+                    SUM(amount) AS total_value
+                    FROM
+                    ai_transaction
+                    WHERE
+                    STRFTIME('%Y', timestamp) = STRFTIME('%Y', 'now')
+                    GROUP BY
+                    month
+                    ORDER BY
+                    month;
+                    ```
+                    ### End Example ###
+
+                    User question: "{query}"
+                    SQL Query:
+                    """
+            raw_sql_query = llm.invoke(sql_generation_prompt).content.strip()
+            
+            match = re.search(r"```(?:sql)?\s*(.*?)\s*```", raw_sql_query, re.DOTALL)
+            if match:
+                sql_query = match.group(1).strip()
+            else:
+                sql_query = raw_sql_query
+            
+            log_info(f"Generated SQL: {sql_query}", tenant_id, conversation_id)
+
+            # Step 2: Execute the query with Pandas
+            engine = create_engine(db_uri)
+            df = pd.read_sql_query(sql_query, con=engine)
+            
         if df.empty:
             log_warning("Query returned no data.", tenant_id, conversation_id)
             return {"visualization_result": {"analysis": "I found no data to visualize for your request.", "image_base64": None}}

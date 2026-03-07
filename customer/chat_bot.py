@@ -311,7 +311,8 @@ Your response must be:
 
     PROTOCOL 4: DATA ANALYTICS
     - Use 'sql_query_tool' for data inquiries. Provide actionable insights.
-    - Use 'generate_visualization_tool'  when user  asked to 'plot', 'chart', 'graph', or 'visualize'.
+    - Use 'generate_visualization_tool' when the user asks to 'plot', 'chart', 'graph', or 'visualize'.
+      IMPORTANT: When visualizing, you MUST call 'sql_query_tool' first to fetch the data. Once 'sql_query_tool' returns the JSON data, pass that exact 'data' payload into the `data` parameter of 'generate_visualization_tool'. Do not pass the data as a string, pass the raw data object.
 
     PROTOCOL 5: PROFILE UPDATES
     - Use 'update_customer_tool' or 'update_employee_profile_tool'.
@@ -328,6 +329,10 @@ Your response must be:
     - Web Context: {web_content}
     - SQL Result: {sql_result}
     
+
+    Tool Guide:{tool_intent_map}
+    - **`generate_visualization_tool`**: **Use this tool when the user asks to 'plot', 'chart', 'graph', or 'visualize' data. You MUST supply the `data` parameter using the results from `sql_query_tool`.**
+   
     ### Output Format:
 You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
 ```json
@@ -336,6 +341,48 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
 }}
 ```
     """
+
+tool_guide = {
+    "leave_management": {
+        "tools": ["fetch_available_leave_types_tool", "prepare_leave_application_tool", 
+                  "submit_leave_application_tool", "fetch_leave_status_tool", "calculate_num_of_days_tool"],
+        "triggers": ["leave", "vacation", "sick leave", "day off", "approve", "leave balance", "resumption"]
+    },
+    "payslip_services": {
+        "tools": ["get_payslip_tool"],
+        "triggers": ["payslip", "salary", "pay statement", "earnings", "payroll"]
+    },
+    "hr_policy": {
+        "tools": ["pdf_retrieval_tool"],
+        "triggers": ["policy", "handbook", "benefits", "hr guide", "rules"]
+    },
+    "data_analysis": {
+        "tools": ["sql_query_tool"],
+        "triggers": ["report", "count", "average", "total", "statistics", "data"]
+    },
+    "visualization": {
+        "tools": ["generate_visualization_tool"],
+        "triggers": ["plot", "chart", "graph", "visualize", "show as a bar chart"]
+    },
+    "profile_updates": {
+        "tools": ["update_employee_profile_tool", "create_customer_profile_tool", "get_customer_details_tool"],
+        "triggers": ["update", "profile", "phone number", "bank account", "details"]
+    },
+    "recruitment": {
+        "tools": ["search_job_opportunities_tool"],
+        "triggers": ["job", "vacancy", "career", "hiring", "position"]
+    },
+    "travel_concierge": {
+        "tools": ["search_travel_deals_tool"],
+        "triggers": ["flight", "hotel", "travel", "booking", "trip"]
+    },
+    "general_inquiry": {
+        "tools": ["web_search_tool"],
+        "triggers": ["what is", "how to", "who is", "search"]
+    }
+}
+
+
 
 
 
@@ -742,6 +789,9 @@ if db:
         - DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP).
         - ALWAYS look at the tables first to understand the schema.
         - always limit your query to at most {top_k} results.
+        - IMPORTANT: Your final response MUST be a valid JSON object with two keys:
+          1. "analysis": A brief text explanation of the results.
+          2. "data": The raw query results as a list of dictionaries (where keys are column names). This is critical for downstream visualization tools.
         """
         
 
@@ -811,102 +861,12 @@ def should_continue(state: State) -> Literal["tool_node", END]:
 
 # config.py or constants.py
 
-TOOL_INTENT_MAP = {
-    "leave_management": {
-        "tools": ["fetch_available_leave_types_tool", "prepare_leave_application_tool", 
-                  "submit_leave_application_tool", "fetch_leave_status_tool", "calculate_num_of_days_tool"],
-        "triggers": ["leave", "vacation", "sick leave", "day off", "approve", "leave balance", "resumption"]
-    },
-    "payslip_services": {
-        "tools": ["get_payslip_tool"],
-        "triggers": ["payslip", "salary", "pay statement", "earnings", "payroll"]
-    },
-    "hr_policy": {
-        "tools": ["pdf_retrieval_tool"],
-        "triggers": ["policy", "handbook", "benefits", "hr guide", "rules"]
-    },
-    "data_analysis": {
-        "tools": ["sql_query_tool"],
-        "triggers": ["report", "count", "average", "total", "statistics", "data"]
-    },
-    "visualization": {
-        "tools": ["generate_visualization_tool"],
-        "triggers": ["plot", "chart", "graph", "visualize", "show as a bar chart"]
-    },
-    "profile_updates": {
-        "tools": ["update_employee_profile_tool", "create_customer_profile_tool", "get_customer_details_tool"],
-        "triggers": ["update", "profile", "phone number", "bank account", "details"]
-    },
-    "recruitment": {
-        "tools": ["search_job_opportunities_tool"],
-        "triggers": ["job", "vacancy", "career", "hiring", "position"]
-    },
-    "travel_concierge": {
-        "tools": ["search_travel_deals_tool"],
-        "triggers": ["flight", "hotel", "travel", "booking", "trip"]
-    },
-    "general_inquiry": {
-        "tools": ["web_search_tool"],
-        "triggers": ["what is", "how to", "who is", "search"]
-    }
-}
-
-
-
-def routing_guardrail_node(state: State):
-    """
-    Guardrail node: Validates tool calls and either allows them to proceed or
-    sends them back to the assistant for correction.
-    Returns a state dict indicating the next action.
-    """
-    logger.info("OYAS routing_guardrail_node  ")
-    if not hasattr(state["messages"][-1], "tool_calls") or not state["messages"][-1].tool_calls:
-        logger.info("OYAS jubilee")
-        return {"next_node": END}
-
-    # Use tenant-specific tool_intent_map from state; fall back to hardcoded constant.
-    effective_tool_intent_map = (
-        (state.get("tenant_config") or {}).get("tool_intent_map")
-        or TOOL_INTENT_MAP
-    )
-    effective_tool_intent_map1=TOOL_INTENT_MAP
-    user_input = next((m.content for m in reversed(state["messages"][:-1]) if hasattr(m, "content")), "").lower()
-    logger.info(f"Guardrail checking tool calls against user input: {user_input}")
-
-    for call in state["messages"][-1].tool_calls:
-        tool_name = call["name"]
-        is_allowed = False
-        for intent, data in effective_tool_intent_map.items():
-            if tool_name in data["tools"]:
-                if any(trigger in user_input for trigger in data["triggers"]):
-                    is_allowed = True
-                    break
-    
-        if not is_allowed:
-            logger.warning(f"Guardrail blocked unauthorized tool call: {tool_name}")
-            return {
-                "messages": [SystemMessage(content=f"Unauthorized tool call: {tool_name}. Please re-evaluate.")], 
-                "next_node": "assistant_node"
-            }
-
-    return {"next_node": "tool_node"}
-
-
-def route_after_guardrail(state: State) -> str:
-    """
-    Routing function for guardrail conditional edges.
-    Extracts the next_node from the guardrail node's state.
-    """
-    next_node = state.get("next_node")
-    if next_node == END:
-        return END
-    return next_node or "tool_node"
-
+# 
 
 
 def tool_node(state: State) -> dict:
     """Performs the tool call, injecting state for specific tools if required."""
-
+    log_info( f"Tool node activated", "GLOBAL_SCOPE", "NO_CONVO")
     # 1. Extract context for logging
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
@@ -1032,6 +992,100 @@ def extract_final_answer(response):
 
     return content_clean or "LLM returned empty response"
 
+
+
+
+
+# 2. Centralized Tool Call Validation
+import json
+import re
+import uuid
+import logging
+
+import json
+import uuid
+
+import json
+import uuid
+import logging
+
+# Configure logger (ensure this is configured in your main app)
+logger = logging.getLogger(__name__)
+
+def normalize_tool_calls(response):
+    logger.info("Starting normalization of tool calls.")
+    
+    # 1. Check if tool calls already exist
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        logger.info("Tool calls already present in response.")
+        return response
+
+    if not isinstance(response.content, str):
+        logger.warning("Response content is not a string, skipping.")
+        return response
+
+    content = response.content.strip()
+    if not content:
+        logger.info("Response content is empty.")
+        return response
+
+    tool_calls = []
+    decoder = json.JSONDecoder()
+    pos = 0
+    
+    # 2. Iterate through content to find and parse multiple JSON objects
+    # Attempt a regex extraction first to handle common LLM formatting issues like trailing quotes
+    import re
+    # Match everything between the first '{' and last '}'
+    match = re.search(r"(\{.*\})", content, re.DOTALL)
+    if match:
+        content = match.group(1)
+
+    while pos < len(content):
+        try:
+            # Find the next potential JSON object
+            pos = content.find('{', pos)
+            if pos == -1:
+                break
+            
+            obj, index = decoder.raw_decode(content[pos:])
+            pos += index
+            
+            # Check if this object is a tool call
+            if isinstance(obj, dict) and ("tool" in obj or "name" in obj):
+                logger.info(f"Successfully extracted tool call: {obj.get('tool') or obj.get('name')}")
+                
+                # Extract args, falling back to all other keys if not explicitly nested
+                extracted_args = obj.get("parameters") or obj.get("args")
+                if not extracted_args or not isinstance(extracted_args, dict):
+                    extracted_args = {k: v for k, v in obj.items() if k not in ("tool", "name")}
+                elif not extracted_args:
+                    extracted_args = {}
+
+                tool_calls.append({
+                    "name": obj.get("tool") or obj.get("name"),
+                    "args": extracted_args,
+                    "id": f"call_{uuid.uuid4().hex[:12]}",
+                    "type": "tool_call"
+                })
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode JSON object at position {pos}: {e}")
+            pos += 1  # Skip to next character to attempt recovery
+        except Exception as e:
+            logger.error(f"Unexpected error during tool call normalization: {e}")
+            break
+            
+    # 3. Apply normalized tool calls to response
+    if tool_calls:
+        response.tool_calls = tool_calls
+        response.content = ""  # Clear raw text to clean up the UI
+        logger.info(f"Normalization complete. {len(tool_calls)} tool calls detected.")
+    else:
+        logger.info("No tool calls detected in content.")
+        
+    return response
+
+
 def assistant_node(state: State, config: RunnableConfig):
     """
     Consolidated Assistant Node: HR Support, Data Analytics, and Customer Concierge.
@@ -1051,20 +1105,22 @@ def assistant_node(state: State, config: RunnableConfig):
     pdf_content = state.get("pdf_content", "None")
     web_content = state.get("web_content", "None")
     sql_result = state.get("sql_result", "None")
-
+    tool_intent_map = ((state.get("tenant_config") or {}).get("tool_intent_map")
+  or tool_guide
+   )
     # global_answer_prompt acts as the persona/intro section of system_prompt.
     # Falls back to GLOBAL_FINAL_ANSWER_PROMPT if not set in the DB.
     global_answer_prompt = (
         tenant_config.get("global_answer_prompt")
         or GLOBAL_FINAL_ANSWER_PROMPT
     )
-
+    
     # agent_prompt is the full system prompt stored in DB (used as an alternative
     # intro when set). If absent, the composed prompt below is used instead.
     # agent_prompt = tenant_config.get("agent_prompt") or None
 
     # Fetch the prompt template
-    agent_prompt = tenant_config.get("agent_prompt",GLOBAL_FINAL_ANSWER_PROMPT)
+    agent_prompt = tenant_config.get("agent_prompt1",GLOBAL_FINAL_ANSWER_PROMPT)
 
     if agent_prompt:
         system_prompt = agent_prompt.format(
@@ -1076,7 +1132,8 @@ def assistant_node(state: State, config: RunnableConfig):
             web_content=web_content,
             # Using leave_application for the state result as requested
             sql_result=sql_result,
-            status_summary=status_summary
+            status_summary=status_summary,
+            tool_intent_map=tool_intent_map
         )
     else:
         # Handle the case where no prompt is found
@@ -1198,138 +1255,28 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
 
     # Otherwise, regular tool-calling invoke
     llm_with_tools = prompt_model.bind_tools(tools)
-    logger.info("Invoking LLM with tools for assistant response generation.")
+    
     # Inside assistant_node, right after the LLM call:
 
 # 1. Capture the raw response
     response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + messages)
-
-    # 2. Check for "Embedded" Tool Calls (The Ollama Fix)
-    if isinstance(response.content, str) and not response.tool_calls:
-        try:
-            # Search for JSON-like patterns in the text
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if json_match:
-                parsed = json.loads(json_match.group())
-                
-                # Map various LLM hallucinations to standard LangChain format
-                t_name = parsed.get("tool") or parsed.get("name") or parsed.get("tool_name")
-                t_args = parsed.get("arguments") or parsed.get("args") or parsed.get("parameters") or {}
-                
-                if t_name:
-                    logger.info(f"Fixed: Extracted '{t_name}' from raw text content.")
-                    # IMPORTANT: Manually populate the tool_calls attribute
-                    response.tool_calls = [{
-                        "name": t_name,
-                        "args": t_args,
-                        "id": f"call_{uuid.uuid4().hex[:12]}",
-                        "type": "tool_call"
-                    }]
-        except Exception as e:
-            logger.error(f"Manual parsing failed: {e}")
-
-    # 3. Now LangGraph will see response.tool_calls and route to tool_node
+    logger.info(f"Raw LLM Output{response}.")
+    # Apply normalization
+    response = normalize_tool_calls(response)
+    # 3. Final Routing
     if response.tool_calls:
+        logger.info(f"Tool call detected: {response.tool_calls}")
         return {"messages": [response]}
-
-    
-    # 2. Check for "Embedded" Tool Calls (The Ollama Fix)
-    if isinstance(response.content, str) and not response.tool_calls:
-        try:
-            # Search for JSON-like patterns in the text
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if json_match:
-                parsed = json.loads(json_match.group())
-                
-                # Map various LLM hallucinations to standard LangChain format
-                t_name = parsed.get("tool") or parsed.get("name") or parsed.get("tool_name")
-                t_args = parsed.get("arguments") or parsed.get("args") or parsed.get("parameters") or {}
-                
-                if t_name:
-                    logger.info(f"Fixed: Extracted '{t_name}' from raw text content.")
-                    # IMPORTANT: Manually populate the tool_calls attribute
-                    response.tool_calls = [{
-                        "name": t_name,
-                        "args": t_args,
-                        "id": f"call_{uuid.uuid4().hex[:12]}",
-                        "type": "tool_call"
-                    }]
-        except Exception as e:
-            logger.error(f"Manual parsing failed: {e}")
-        
-    #     # 3. Now LangGraph will see response.tool_calls and route to tool_node
-        if response.tool_calls:
-            return {"messages": [response]}
-        if hasattr(response, "tool_calls") and response.tool_calls:
-            logger.info(f"Tool calls foundAtejjdy: {response.tool_calls}")
-            return {"messages": [response]}  # keep the AIMessage intact
-        
-
-    #     # Check 2: JSON-wrapped/Embedded Tool Calls (The "Ollama Fallback")
-        if isinstance(response.content, str):
-            try:
-                # Look for JSON blocks even if mixed with text
-                json_blocks = re.findall(r"\{.*?\}", response.content, flags=re.DOTALL)
-                extracted_calls = []
-                
-                for block in json_blocks:
-                    try:
-                        parsed = json.loads(block)
-                        if isinstance(parsed, dict):
-                            # Support various formats:
-                            # 1. Standard {'name': ..., 'args': ...}
-                            # 2. Ollama Cloud {'tool': ..., 'parameters': ...}
-                            # 3. List wrapper {'tool_calls': [...]}
-                            
-                            if "tool_calls" in parsed and isinstance(parsed["tool_calls"], list):
-                                extracted_calls.extend(parsed["tool_calls"])
-                            else:
-                                extracted_calls.append(parsed)
-                    except:
-                        continue
-                
-                if extracted_calls:
-                    valid_calls = []
-                    for call in extracted_calls:
-                        # Detect tool name from various possible keys
-                        t_name = call.get("name") or call.get("tool") or call.get("tool_name")
-                        if not t_name: continue
-                        
-                        # Detect arguments from various possible keys
-                        t_args = call.get("args") or call.get("parameters") or call.get("arguments") or {}
-                        
-                        valid_calls.append({
-                            "name": t_name,
-                            "args": t_args,
-                            "id": call.get("id") or str(uuid.uuid4()),
-                            "type": "tool_call"
-                        })
-                    
-                    if valid_calls:
-                        logger.info(f"Manually extracted {len(valid_calls)} tool calls from mixed content.")
-                        response.tool_calls = valid_calls
-                        # Also clean up the content to keep only the tool call if it's primarily a tool request
-                        return {"messages": [response]}
-            except Exception as e:
-                logger.error(f"Failed to robustly parse tool calls from content: {e}")
-
-    #     # --- END OF NEW PARSING ---
-
+    else:
+        # Handle as standard text response
         final_answer = extract_final_answer(response)
         logger.info(f"LLM response Assitant Node: {final_answer}")
         return {"messages": [AIMessage(content=final_answer)]}
 
+  
 
 
 
-        # final_answer = extract_final_answer(response)
-        # logger.info(f"LLM response Assitant Node: {final_answer}")
-        # logger.info(f"Final Output Raw Aliko: {messages}")
-        
-        # return {"messages": [AIMessage(content=final_answer)]}
-
-
-        # return {"messages": [final_answer]}
 
 def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
     workflow = StateGraph(State)
@@ -1337,39 +1284,22 @@ def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
 
     # 1. Add Nodes
     workflow.add_node("assistant_node", assistant_node)
-    log_info("Assistant node added to graph.", tenant_id, conversation_id)
-    
     workflow.add_node("tool_node", tool_node)
-    log_info("Tool node added to graph.", tenant_id, conversation_id)
     
-    workflow.add_node("guardrail_node", routing_guardrail_node)
-    log_info("Guardrail node added to graph.", tenant_id, conversation_id)
+    
+    # workflow.add_node("guardrail_node", routing_guardrail_node)
+    # log_info("Guardrail node added to graph.", tenant_id, conversation_id)
 
     # 2. Routing
     workflow.add_edge(START, "assistant_node")
     log_info("Edge added from START to assistant_node.", tenant_id, conversation_id)
-    
-    # Assistant decides if it needs a tool or should end
+
+    # workflow.add_conditional_edges("llm_call", should_continue, ["tool_node", END])
     workflow.add_conditional_edges(
-        "assistant_node", 
-        lambda x: "guardrail_node" if hasattr(x["messages"][-1], "tool_calls") and x["messages"][-1].tool_calls else END
+        "assistant_node", should_continue, ["tool_node", END]
     )
-    log_info("Conditional edges added from assistant_node to guardrail_node and END.", tenant_id, conversation_id)
-    
-    
-    # Guardrail decides if it passes to tool_node or rejects back to assistant
-    workflow.add_conditional_edges(
-    "guardrail_node",
-    route_after_guardrail,  # Use the routing function
-    {
-        "tool_node": "tool_node",
-        "assistant_node": "assistant_node",
-        END: END
-    }
-)
-    log_info("Conditional edges added from guardrail_node to tool_node and assistant_node.", tenant_id, conversation_id)
-    
-    # After tool execution, always return to assistant
+
+   # After tool execution, always return to assistant
     workflow.add_edge("tool_node", "assistant_node")
     log_info("Edge added from tool_node to assistant_node.", tenant_id, conversation_id)
 
@@ -1475,7 +1405,7 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
     except Exception as e:
         log_error(f"Database error in process_message: {e}", tenant_id, conversation_id)
         log_exception_auto(f"DB stack trace: {e}", tenant_id, conversation_id)
-        return {"answer": "Error: Database failure.", "metadata": {}}
+        return {"answer": f"Error: Database failure. Details: {str(e)}", "metadata": {}}
 
     # --- 2. Initialization & Vector Store ---
     persist_directory = os.path.join("faiss_dbs", tenant_id)
@@ -1613,7 +1543,8 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
             log_error(f"grapuy Raw State: {output}", tenant_id, conversation_id)
             log_info("LangGraph execution completed", tenant_id, conversation_id)
         except Exception as e:
-            log_error(f"LangGraph execution failed: {e}", tenant_id, conversation_id)
+            import traceback
+            log_error(f"LangGraph execution failed: {e}\n{traceback.format_exc()}", tenant_id, conversation_id)
             raise
 
     # --- 9. Response Extraction ---
@@ -1654,3 +1585,57 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
 
         logger.info(f"LLM Response Fallback: {fallback}")
         return {"answer": fallback, "metadata": {}}
+
+
+
+
+
+# def routing_guardrail_node(state: State):
+#     """
+#     Guardrail node: Validates tool calls and either allows them to proceed or
+#     sends them back to the assistant for correction.
+#     Returns a state dict indicating the next action.
+#     """
+#     logger.info("OYAS routing_guardrail_node  ")
+#     if not hasattr(state["messages"][-1], "tool_calls") or not state["messages"][-1].tool_calls:
+#         logger.info("OYAS jubilee")
+#         return {"next_node": END}
+
+#     # Use tenant-specific tool_intent_map from state; fall back to hardcoded constant.
+#     effective_tool_intent_map = (
+#         (state.get("tenant_config") or {}).get("tool_intent_map")
+#         or TOOL_INTENT_MAP
+#     )
+#     effective_tool_intent_map1=TOOL_INTENT_MAP
+#     user_input = next((m.content for m in reversed(state["messages"][:-1]) if hasattr(m, "content")), "").lower()
+#     logger.info(f"Guardrail checking tool calls against user input: {user_input}")
+
+#     for call in state["messages"][-1].tool_calls:
+#         tool_name = call["name"]
+#         is_allowed = False
+#         for intent, data in effective_tool_intent_map.items():
+#             if tool_name in data["tools"]:
+#                 if any(trigger in user_input for trigger in data["triggers"]):
+#                     is_allowed = True
+#                     break
+    
+#         if not is_allowed:
+#             logger.warning(f"Guardrail blocked unauthorized tool call: {tool_name}")
+#             return {
+#                 "messages": [SystemMessage(content=f"Unauthorized tool call: {tool_name}. Please re-evaluate.")], 
+#                 "next_node": "assistant_node"
+#             }
+
+#     return {"next_node": "tool_node"}
+
+
+# def route_after_guardrail(state: State) -> str:
+#     """
+#     Routing function for guardrail conditional edges.
+#     Extracts the next_node from the guardrail node's state.
+#     """
+#     next_node = state.get("next_node")
+#     if next_node == END:
+#         return END
+#     return next_node or "tool_node"
+
