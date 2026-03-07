@@ -418,6 +418,9 @@ class Prompt(TenantModel):
     is_hum_agent_allow_prompt = models.TextField(blank=True, null=True)
     no_hum_agent_allow_prompt = models.TextField(blank=True, null=True)
     summary_prompt = models.TextField(blank=True, null=True)
+    agent_prompt = models.TextField(blank=True, null=True)
+    global_answer_prompt = models.TextField(blank=True, null=True)
+    tool_intent_map = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

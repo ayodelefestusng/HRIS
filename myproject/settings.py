@@ -174,26 +174,10 @@ else:
         }
     }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-                "timeout": 20,  # default is 5 seconds
-
-
-    },
-    'local_pg': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hris',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"), conn_max_age=600)
 }
 
 
-# 3. Add this temporary debug line to your terminal
-print(f"--- DEBUG: Using Database Engine: {DATABASES['default'].get('ENGINE')} on {DATABASES['default'].get('HOST')} ---")
 # Password validation
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

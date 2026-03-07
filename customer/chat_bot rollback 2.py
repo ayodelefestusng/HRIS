@@ -869,7 +869,7 @@ def routing_guardrail_node(state: State):
         (state.get("tenant_config") or {}).get("tool_intent_map")
         or TOOL_INTENT_MAP
     )
-    effective_tool_intent_map1=TOOL_INTENT_MAP
+
     user_input = next((m.content for m in reversed(state["messages"][:-1]) if hasattr(m, "content")), "").lower()
     logger.info(f"Guardrail checking tool calls against user input: {user_input}")
 
@@ -1043,11 +1043,10 @@ def assistant_node(state: State, config: RunnableConfig):
 
     # --- Resolve DB-sourced prompts with hardcoded fallbacks ---
     tenant_config = state.get("tenant_config") or {}
-    employee_id = {state.get('employee_id')}
+    ID = tenant_config.get("id")
     current_year = datetime.now().year
     previous_year = current_year - 1
     current_date_str = datetime.now().strftime("%Y-%m-%d")
-    status_summary = state.get("status_summary", "No active application.")
     pdf_content = state.get("pdf_content", "None")
     web_content = state.get("web_content", "None")
     sql_result = state.get("sql_result", "None")
@@ -1061,30 +1060,7 @@ def assistant_node(state: State, config: RunnableConfig):
 
     # agent_prompt is the full system prompt stored in DB (used as an alternative
     # intro when set). If absent, the composed prompt below is used instead.
-    # agent_prompt = tenant_config.get("agent_prompt") or None
-
-    # Fetch the prompt template
-    agent_prompt = tenant_config.get("agent_prompt",GLOBAL_FINAL_ANSWER_PROMPT)
-
-    if agent_prompt:
-        system_prompt = agent_prompt.format(
-            ID=employee_id,
-            current_year=current_year,
-            previous_year=previous_year,
-            current_date_str=current_date_str,
-            pdf_content=pdf_content,
-            web_content=web_content,
-            # Using leave_application for the state result as requested
-            sql_result=sql_result,
-            status_summary=status_summary
-        )
-    else:
-        # Handle the case where no prompt is found
-        system_prompt = "Default fallback prompt or error handling logic here."
-
-
-
-
+    agent_prompt = tenant_config.get("agent_prompt") or None
 
     # 1. DYNAMIC CONTEXT PREPARATION (HR/Leave Status)
     leave_app = state.get("leave_application")
@@ -1199,40 +1175,8 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
     # Otherwise, regular tool-calling invoke
     llm_with_tools = prompt_model.bind_tools(tools)
     logger.info("Invoking LLM with tools for assistant response generation.")
-    # Inside assistant_node, right after the LLM call:
-
-# 1. Capture the raw response
     response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + messages)
-
-    # 2. Check for "Embedded" Tool Calls (The Ollama Fix)
-    if isinstance(response.content, str) and not response.tool_calls:
-        try:
-            # Search for JSON-like patterns in the text
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if json_match:
-                parsed = json.loads(json_match.group())
-                
-                # Map various LLM hallucinations to standard LangChain format
-                t_name = parsed.get("tool") or parsed.get("name") or parsed.get("tool_name")
-                t_args = parsed.get("arguments") or parsed.get("args") or parsed.get("parameters") or {}
-                
-                if t_name:
-                    logger.info(f"Fixed: Extracted '{t_name}' from raw text content.")
-                    # IMPORTANT: Manually populate the tool_calls attribute
-                    response.tool_calls = [{
-                        "name": t_name,
-                        "args": t_args,
-                        "id": f"call_{uuid.uuid4().hex[:12]}",
-                        "type": "tool_call"
-                    }]
-        except Exception as e:
-            logger.error(f"Manual parsing failed: {e}")
-
-    # 3. Now LangGraph will see response.tool_calls and route to tool_node
-    if response.tool_calls:
-        return {"messages": [response]}
-
-    
+    logger.info(f"LLM RAW ALukeee response Assitant Node: {response}")
     # 2. Check for "Embedded" Tool Calls (The Ollama Fix)
     if isinstance(response.content, str) and not response.tool_calls:
         try:
@@ -1257,7 +1201,7 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
         except Exception as e:
             logger.error(f"Manual parsing failed: {e}")
         
-    #     # 3. Now LangGraph will see response.tool_calls and route to tool_node
+        # 3. Now LangGraph will see response.tool_calls and route to tool_node
         if response.tool_calls:
             return {"messages": [response]}
         if hasattr(response, "tool_calls") and response.tool_calls:
@@ -1265,7 +1209,7 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
             return {"messages": [response]}  # keep the AIMessage intact
         
 
-    #     # Check 2: JSON-wrapped/Embedded Tool Calls (The "Ollama Fallback")
+        # Check 2: JSON-wrapped/Embedded Tool Calls (The "Ollama Fallback")
         if isinstance(response.content, str):
             try:
                 # Look for JSON blocks even if mixed with text
@@ -1313,7 +1257,7 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
             except Exception as e:
                 logger.error(f"Failed to robustly parse tool calls from content: {e}")
 
-    #     # --- END OF NEW PARSING ---
+        # --- END OF NEW PARSING ---
 
         final_answer = extract_final_answer(response)
         logger.info(f"LLM response Assitant Node: {final_answer}")
@@ -1330,6 +1274,7 @@ You MUST return ONLY a valid JSON object. Do not include any text outside the JS
 
 
         # return {"messages": [final_answer]}
+
 
 def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
     workflow = StateGraph(State)
