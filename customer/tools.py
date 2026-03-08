@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+from xmlrpc.server import list_public_methods
 import pandas as pd
 from logging.handlers import RotatingFileHandler
 from langchain_core.runnables import RunnableConfig
@@ -30,6 +31,8 @@ from langchain_tavily import TavilySearch
 from langchain.tools import tool
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
+
+# from .chat_bot import get_model
 
 
 
@@ -267,20 +270,39 @@ def validate_leave_balance_tool(config: RunnableConfig, **kwargs):
 
                 # 2. Fetch balance
                 # Query leave_leavebalance table
+#                 balance_query = text("""
+#     SELECT lb.balance_days, lb.total_earned, lb.used 
+#     FROM leave_leavebalance lb
+#     JOIN employees_employee ee ON lb.employee_id = ee.id
+#     JOIN auth_user au ON ee.user_id = au.id
+#     WHERE au.email = :emp_id 
+#     AND lb.leave_type_id = :lt_id 
+#     AND lb.year = :year
+# """)
+                
+                
                 balance_query = text("""
                     SELECT lb.balance_days, lb.total_earned, lb.used 
                     FROM leave_leavebalance lb
                     JOIN employees_employee ee ON lb.employee_id = ee.id
-                    WHERE ee.email = :emp_id 
+                    WHERE ee.employee_email = :emp_id 
                     AND lb.leave_type_id = :lt_id 
                     AND lb.year = :year
                 """)
                 
-                bal_result = connection.execute(balance_query, {
-                    "emp_id": emp_id, 
-                    "lt_id": leave_type_id, 
-                    "year": year
-                }).fetchone()
+                try:
+                    bal_result = connection.execute(balance_query, {
+                        "emp_id": emp_id, 
+                        "lt_id": leave_type_id, 
+                        "year": year
+                    }).fetchone()
+                except Exception as e:
+                    # HERE IS WHERE YOU PUT THE LOGGING LOGIC
+                    logger.error(f"DB Error validating balance for {emp_id}: {str(e)}")
+                    return ToolMessage(
+                        content="We encountered an issue checking your leave balance. Please try again or contact HR support.", 
+                        tool_call_id=tid
+                    )
                 
                 if not bal_result:
                     return ToolMessage(content=f"Error: No leave balance record found for {leave_type_name} in {year}.", tool_call_id=tid)
@@ -351,7 +373,7 @@ def submit_leave_application_tool(config: RunnableConfig, **kwargs):
                 tenant_id = t_res[0]
 
                 # 2. Resolve Main Employee ID
-                e_query = text("SELECT id FROM employees_employee WHERE email = :email AND tenant_id = :t_id")
+                e_query = text("SELECT id FROM employees_employee WHERE employee_email = :email AND tenant_id = :t_id")
                 e_res = connection.execute(e_query, {"email": emp_email, "t_id": tenant_id}).fetchone()
                 if not e_res:
                     return ToolMessage(content=f"Error: Employee profiling for '{emp_email}' not found.", tool_call_id=tid)
@@ -369,7 +391,7 @@ def submit_leave_application_tool(config: RunnableConfig, **kwargs):
                 if relief_name and relief_name.strip():
                     r_query = text("""
                         SELECT id FROM employees_employee 
-                        WHERE (first_name || ' ' || last_name ILIKE :name OR email = :name)
+                        WHERE (first_name || ' ' || last_name ILIKE :name OR employee_email = :name)
                         AND tenant_id = :t_id
                     """)
                     r_res = connection.execute(r_query, {"name": relief_name, "t_id": tenant_id}).fetchone()
@@ -675,7 +697,7 @@ def fetch_leave_status_tool(config: RunnableConfig, **kwargs):
                     JOIN leave_leavetype lt ON lr.leave_type_id = lt.id
                     JOIN employees_employee emp ON lr.employee_id = emp.id
                     LEFT JOIN workflow_workflowinstance wi ON lr.id = wi.object_id AND wi.content_type_id = :ct_id
-                    WHERE emp.email = :email AND lr.tenant_id = :t_id
+                    WHERE emp.employee_email = :email AND lr.tenant_id = :t_id
                     ORDER BY lr.order_date DESC
                     LIMIT 5
                 """
@@ -870,14 +892,15 @@ def init_sql_agent(state: State, llm):
         # --- Initialize toolkit and agent ---
 
         # Use a LangChain-compatible OllamaService for the SQL toolkit
-        ollama_llm = OllamaService(
-            base_url=OLLAMA_BASE_URL,
-            username=OLLAMA_USERNAME,
-            password=OLLAMA_PASSWORD,
-            model=OLLAMA_MODEL
-        )
-        
-        toolkit = SQLDatabaseToolkit(db=db, llm=ollama_llm)
+        # ollama_llm = OllamaService(
+        #     base_url=OLLAMA_BASE_URL,
+        #     username=OLLAMA_USERNAME,
+        #     password=OLLAMA_PASSWORD,
+        #     model=OLLAMA_MODEL
+        # )
+        from .chat_bot import get_model
+        llm =get_model()  # Use the existing get_model function to maintain consistency and leverage any caching or configuration it provides
+        toolkit = SQLDatabaseToolkit(db=db, llm=llm)
         tools = toolkit.get_tools()
         for tool_item in tools:
             log_info(
@@ -906,12 +929,11 @@ def init_sql_agent(state: State, llm):
             - Limit your query to at most 5 results.
             """
         # agent = create_agent(llm, tools, system_prompt=SQL_SYSTEM_PROMPT)
-        # Try using create_agent instead of create_react_agent to avoid tool binding issues
-        from langchain.agents import create_agent
-        agent = create_agent(
+        # Use create_react_agent for better compatibility with LangGraph and stream/invoke methods
+        agent = create_react_agent(
             llm,
             tools,
-            system_prompt=SQL_SYSTEM_PROMPT.format(dialect=db.dialect),
+            prompt=SQL_SYSTEM_PROMPT.format(dialect=db.dialect),
         )
         log_info(
             f"[{tenant_id}] SQL Agent initialized successfully.",
@@ -1080,63 +1102,99 @@ def update_customer_tool(config: RunnableConfig, **kwargs):
     description="Useful for answering questions requiring data from a SQL database (e.g., 'How many users are there?'). Input should be a natural language question.",
 )
 def sql_query_tool(query: str, state: dict) -> dict:
-    """Executes a SQL query using the pre-initialized SQL agent and returns the result."""
-    tenant_config = state.get("tenant_config", {})
-    tenant_id = tenant_config.get("tenant_id", "unknown")
-    conversation_id = state.get("conversation_id", "unknown")
-    tenant_config = state.get("tenant_config", {})
-    tenant_id = tenant_config.get("tenant_id", "unknown")
-    conversation_id = state.get("conversation_id", "unknown")
-    log_info(f"sql_query_toolAluike invoked with query: {query}", tenant_id, conversation_id)
-    
+    # --- 1. State Extraction & Logging ---
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
     db_uri = tenant_config.get("db_uri") or state.get("db_uri")
 
+    log_info(f"sql_query_tool invoked for tenant {tenant_id}. Query: {query}", tenant_id, conversation_id)
+
     if not db_uri:
-        log_warning(
-            "DB URI is empty. Returning 'Db tool not available'.",
-            tenant_id,
-            conversation_id,
-        )
+        log_warning("DB URI is missing. Tool unavailable.", tenant_id, conversation_id)
         return {"sql_result": "Db tool not available"}
 
-    log_info(f"sql_query_tool invoked with query {query}", tenant_id, conversation_id)
-
-    agent = TENANT_SQL_AGENTS.get(tenant_id)
-    if not agent:
-        log_warning(
-            f"Initializing SQL agent for tenant {tenant_id}", tenant_id, conversation_id
-        )
-        return {
-            "sql_result": f"Error: SQL Agent not initialized for tenant {tenant_id}."
-        }
-
+    # --- 2. Isolated Initialization (Scorched Earth for Windows Stability) ---
     try:
-        response_generator = agent.stream(
-            {"messages": [HumanMessage(content=query)]}, stream_mode="values"
-        )
+        log_info("!!! TRACE: sql_query_tool - Entering isolated init block", tenant_id, conversation_id)
+        # Create fresh DB and LLM instances for this specific tool call
+        log_info("!!! TRACE: sql_query_tool - Importing SQLDatabase...", tenant_id, conversation_id)
+        from langchain_community.utilities import SQLDatabase
+        log_info("!!! TRACE: sql_query_tool - Importing SQLDatabaseToolkit...", tenant_id, conversation_id)
+        from langchain_community.agent_toolkits import SQLDatabaseToolkit
+        log_info("!!! TRACE: sql_query_tool - Importing create_react_agent...", tenant_id, conversation_id)
+        from langgraph.prebuilt import create_react_agent
+        
+        log_info(f"!!! TRACE: sql_query_tool - Calling SQLDatabase.from_uri with: {db_uri[:20]}...", tenant_id, conversation_id)
+        db = SQLDatabase.from_uri(db_uri)
+        log_info("!!! TRACE: sql_query_tool - SQLDatabase.from_uri SUCCESS", tenant_id, conversation_id)
+        
+        # Use a fresh OllamaService instance
+        log_info("!!! TRACE: sql_query_tool - Initializing fresh OllamaService...", tenant_id, conversation_id)
+        # ollama_llm = OllamaService(
+        #     base_url=OLLAMA_BASE_URL,
+        #     username=OLLAMA_USERNAME,
+        #     password=OLLAMA_PASSWORD,
+        #     model=OLLAMA_MODEL
+        # )
+        from .chat_bot import get_model
+        llm = get_model()
+        log_info("!!! TRACE: sql_query_tool - OllamaService init SUCCESS", tenant_id, conversation_id)
+        
+        log_info("!!! TRACE: sql_query_tool - Initializing SQLDatabaseToolkit...", tenant_id, conversation_id)
+        toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+        sql_tools = toolkit.get_tools()
+        log_info(f"!!! TRACE: sql_query_tool - Toolkit tools retrieved: {len(sql_tools)}", tenant_id, conversation_id)
+        
+        
+        SQL_SYSTEM_PROMPT = """
+            You are an agent designed to interact with a SQL database. Given an input question,
+            create a syntactically correct {dialect} query, execute it, and return the answer.
 
-        full_response_content = []
-        for chunk in response_generator:
-            if "messages" in chunk and chunk["messages"]:
-                content = chunk["messages"][-1].content
-                if content:
-                    full_response_content.append(content)
-
-        result = (
-            "\n".join(full_response_content)
-            if full_response_content
-            else "No response from SQL agent."
+            - Query only necessary columns.
+            - DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP).
+            - **CRITICAL**: ONLY query columns that contain simple text or numerical data. Avoid querying columns that contain complex types like JSON, JSONB, or Arrays, as they cause internal errors.
+            - Double-check your query before execution.
+            - ALWAYS look at the tables first to understand the schema.
+            - **CRITICAL SCHEMAS TO REFERENCE**: 
+                - customer_account, customer_branchperformance, customer_contact, customer_conversation, 
+                - customer_crmuser, customer_customer, customer_lead, customer_loanreport, 
+                - customer_message, customer_opportunity, customer_transaction, org_location,
+                - ats_jobposting, ats_application, org_jobrole, employees_employee, 
+                - leave_leavetype, leave_leavebalance.
+            - Use these tables to perform deep data analysis and visualizations.
+            - Maximum number of turns of call is 3, otherwise return the result.
+            - Limit your query to at most 5 results.
+            """
+        
+        # Initialize a fresh agent for this specific call
+        log_info("!!! TRACE: sql_query_tool - Creating react agent...", tenant_id, conversation_id)
+        agent = create_react_agent(
+            llm,
+            sql_tools,
+            prompt=SQL_SYSTEM_PROMPT.format(dialect=db.dialect),
         )
-        log_info(f"SQL query result raw: {result}", tenant_id, conversation_id)
+        log_info("!!! TRACE: sql_query_tool - Agent creation SUCCESS", tenant_id, conversation_id)
+        
+        log_info(f"!!! CRASH TRACE: About to call agent.invoke() for query: {query}", tenant_id, conversation_id)
+        agent_response = agent.invoke(
+            {"messages": [HumanMessage(content=query)]}
+        )
+        log_info(f"!!! CRASH TRACE: agent_response: {agent_response}", tenant_id, conversation_id)
+        log_info("!!! CRASH TRACE: agent.invoke() COMPLETED SUCCESSFULLY", tenant_id, conversation_id)
+        
+        agent_msgs = agent_response.get("messages", [])
+        result = agent_msgs[-1].content if agent_msgs else "No response from SQL agent."
+        
+        log_info(f"DEBUG: SQL Agent response received. Length: {len(result)}", tenant_id, conversation_id)
         
         # Attempt to parse JSON containing 'analysis' and 'data'
         import json
         import re
         parsed_data = None
         analysis_text = result
+        
+        # Check if the result specifically looks like it contains encoded JSON
         try:
             # Look for JSON block if wrapped in markdown
             match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", result, re.DOTALL)
@@ -1146,13 +1204,18 @@ def sql_query_tool(query: str, state: dict) -> dict:
             if isinstance(parsed, dict) and 'data' in parsed:
                 parsed_data = parsed['data']
                 analysis_text = parsed.get('analysis', "Here is the data you requested.")
-        except Exception as e:
-            log_warning(f"Could not parse SQL Agent output as JSON: {e}", tenant_id, conversation_id)
-            
+        except Exception:
+            # If parsing fails, it's likely just a text/markdown response. We use it as is.
+            pass
+        log_info(f"DEBUG: SQL Agent response received. Length: {len(analysis_text)}", tenant_id, conversation_id)   
+        log_info(f"DEBUG: SQL Agent response received. analysis: {analysis_text} and data: {parsed_data}", tenant_id, conversation_id) 
         return {"sql_result": analysis_text, "data": parsed_data}
 
-    except Exception as e:
-        return {"sql_result": f"Error executing SQL query: {e}"}
+    except BaseException as e:
+        import traceback
+        tb_str = traceback.format_exc()
+        log_error(f"CRITICAL ERROR in sql_query_tool:\nType: {type(e)}\nError: {e}\nTraceback: {tb_str}", tenant_id, conversation_id)
+        return {"sql_result": f"Error executing SQL query: {e}. Check server logs."}
 
 @tool(
     "pdf_retrieval_tool",

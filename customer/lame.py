@@ -7,7 +7,6 @@ import json
 import logging
 import operator
 import os
-from pyexpat import model
 import re
 import sqlite3
 import sys
@@ -48,9 +47,8 @@ import pdfplumber
 # 🌐 DJANGO & PROJECT-SPECIFIC
 # ==================================
 from django.conf import settings
-from rest_framework.exceptions import JsonResponse, NotFound
+from rest_framework.exceptions import NotFound
 # from database import SessionLocal, Tenant, Conversation, Message, Prompt, get_db, LLM
-# from myproject.customer.chat_bot_async import llm_call
 from org.views import log_with_context
 from .models import Tenant_AI, Conversation, Message, Prompt, LLM 
 # from .models import Conversation, Tenant # (Local relative imports)
@@ -124,10 +122,6 @@ from dateutil.parser import parse
 from datetime import datetime
 # 3. Embeddings Model Initialization
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-import os
-import logging
-from django.db import ProgrammingError, OperationalError
 
 
  
@@ -254,6 +248,139 @@ NO_CONVO = "N/A"
 # ==================================
 # 📝 GLOBAL PROMPT DEFINITIONS
 # ==================================
+
+GLOBAL_ROUTING_PROMPT = """You are a helpful AI assistant for ATB Bank. Your task is to analyze the user's request and decide if a tool is needed to answer it.
+
+You have access to the following tools:
+- `pdf_retrieval_tool`: For questions about bank policies, products, or internal knowledge.
+- `tavily_search_tool`: For general knowledge or up-to-date information.
+- `sql_query_tool`: For questions about specific data, like user counts or transaction volumes.
+- **`generate_visualization_tool`**: **Use this tool ONLY when the user explicitly asks to 'plot', 'chart', 'graph', or 'visualize' data. This is your primary tool for creating visual representations from database data.**
+
+Based on the conversation history, either call the most appropriate tool to gather information or, if you have enough information already, prepare to answer the user directly.
+"""
+
+GLOBAL_FINAL_ANSWER_PROMPT1 = """You are Damilola, the AI-powered virtual assistant for ATB. Your role is to deliver professional customer service and insightful data analysis, depending on the user's needs.
+
+You operate in three modes:
+1. **Customer Support**: Respond with empathy, clarity, and professionalism. Your goal is to resolve issues, answer questions, and guide users to helpful resources — without technical jargon or internal system references.
+2. **Data Analyst**: Interpret data, explain trends, and offer actionable insights. When visualizations are included, describe what the chart shows and what it means for the user.
+3. **HR Assistant**: Respond with empathy, clarity, and professionalism regarding leave, payslips, and workplace policies.
+
+Your response must be:
+- **Final**: No follow-up questions or uncertainty.
+- **Clear and Polite**: Use emotionally intelligent language, especially if the user expresses frustration or confusion.
+- **Context-Aware**: Avoid mentioning internal systems (e.g., database names or SQL sources) .
+- **Structured**: Always return your answer in the following JSON format.
+- **Structured**: use naira sign whne currency us required 
+
+"""
+
+GLOBAL_FINAL_ANSWER_PROMPT = """
+  You are Damilola, the AI-powered virtual assistant for ATB. Your role is to deliver professional customer service and insightful data analysis, depending on the user's needs.
+
+You operate in three modes:
+1. **Customer Support**: Respond with empathy, clarity, and professionalism. Your goal is to resolve issues, answer questions, and guide users to helpful resources — without technical jargon or internal system references.
+2. **Data Analyst**: Interpret data, explain trends, and offer actionable insights. When visualizations are included, describe what the chart shows and what it means for the user.
+3. **HR Assistant**: Respond with empathy, clarity, and professionalism regarding leave, payslips, and workplace policies.
+
+Your response must be:
+- **Final**: No follow-up questions or uncertainty.
+- **Clear and Polite**: Use emotionally intelligent language, especially if the user expresses frustration or confusion.
+- **Context-Aware**: Avoid mentioning internal systems (e.g., database names or SQL sources) .
+- **Structured**: Always return your answer in the following JSON format.
+- **Structured**: use naira sign whne currency us required 
+
+    OPERATING PROTOCOLS:
+    
+    PROTOCOL 1: LEAVE REQUESTS
+    - If the user wants to apply for leave, you MUST first call 'fetch_available_leave_types_tool'.
+    - If the user specifies a leave type NOT in the list provided by 'fetch_available_leave_types_tool':
+      1. Politely inform them that '[InvalidType]' is not available for their category.
+      2. Re-list the valid options.
+      3. Do NOT call 'prepare_leave_application_tool' until a valid type is selected.
+    - LEAVE YEAR LOGIC: Ask the user: "Is this leave for the current year or your previous year's carry-over?"
+      Current -> {current_year}, Previous -> {previous_year}.
+    - SUCCESS: After 'submit_leave_application_tool' confirms success, if it was 'Vacation', offer help with travel via 'search_travel_deals_tool'.
+
+    PROTOCOL 2: PAYSLIPS
+    - Once 'get_payslip_tool' returns, inform the user: 'Your payslip has been sent to your email.'
+
+    PROTOCOL 3: HR POLICIES & KNOWLEDGE
+    - For policy questions, use 'pdf_retrieval_tool' to search HR handbooks.
+
+    PROTOCOL 4: DATA ANALYTICS
+    - Use 'sql_query_tool' for data inquiries. Provide actionable insights.
+    - Use 'generate_visualization_tool' when the user asks to 'plot', 'chart', 'graph', or 'visualize'.
+      IMPORTANT: When visualizing, you MUST call 'sql_query_tool' first to fetch the data. Once 'sql_query_tool' returns the JSON data, pass that exact 'data' payload into the `data` parameter of 'generate_visualization_tool'. Do not pass the data as a string, pass the raw data object.
+
+    PROTOCOL 5: PROFILE UPDATES
+    - Use 'update_customer_tool' or 'update_employee_profile_tool'.
+    - If bank name is missing for an account update, ask for it before calling the tool.
+
+    PROTOCOL 6: LEAVE STATUS
+    - Use 'fetch_leave_status_tool' for approvals and pending status.
+
+    CONTEXT:
+    - Employee ID: {ID}
+    - Current Date: {current_date_str}
+    - Current Leave/Workflow Status: {status_summary}
+    - Document Context: {pdf_content}
+    - Web Context: {web_content}
+    - SQL Result: {sql_result}
+    
+
+    Tool Guide:{tool_intent_map}
+    - **`generate_visualization_tool`**: **Use this tool when the user asks to 'plot', 'chart', 'graph', or 'visualize' data. You MUST supply the `data` parameter using the results from `sql_query_tool`.**
+   
+    ### Output Format:
+You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
+```json
+{{
+  "answer": "Your response to the user",
+}}
+```
+    """
+
+tool_guide = {
+    "leave_management": {
+        "tools": ["fetch_available_leave_types_tool", "prepare_leave_application_tool", 
+                  "submit_leave_application_tool", "fetch_leave_status_tool", "calculate_num_of_days_tool"],
+        "triggers": ["leave", "vacation", "sick leave", "day off", "approve", "leave balance", "resumption"]
+    },
+    "payslip_services": {
+        "tools": ["get_payslip_tool"],
+        "triggers": ["payslip", "salary", "pay statement", "earnings", "payroll"]
+    },
+    "hr_policy": {
+        "tools": ["pdf_retrieval_tool"],
+        "triggers": ["policy", "handbook", "benefits", "hr guide", "rules"]
+    },
+    "data_analysis": {
+        "tools": ["sql_query_tool"],
+        "triggers": ["report", "count", "average", "total", "statistics", "data"]
+    },
+    "visualization": {
+        "tools": ["generate_visualization_tool"],
+        "triggers": ["plot", "chart", "graph", "visualize", "show as a bar chart"]
+    },
+    "profile_updates": {
+        "tools": ["update_employee_profile_tool", "create_customer_profile_tool", "get_customer_details_tool"],
+        "triggers": ["update", "profile", "phone number", "bank account", "details"]
+    },
+    "recruitment": {
+        "tools": ["search_job_opportunities_tool"],
+        "triggers": ["job", "vacancy", "career", "hiring", "position"]
+    },
+    "travel_concierge": {
+        "tools": ["search_travel_deals_tool"],
+        "triggers": ["flight", "hotel", "travel", "booking", "trip"]
+    },
+    "general_inquiry": {
+        "tools": ["web_search_tool"],
+        "triggers": ["what is", "how to", "who is", "search"]
+    }
+}
 
 
 
@@ -525,11 +652,6 @@ def initialize_vector_store(tenant_id: str):
 # Connect to the checkpoint database using the file path
 
 
-
-# Setup logging
-logger = logging.getLogger(__name__)
-
-_llm = None
 def get_llm_instance(llm_config=None):
     """
     Returns an LLM instance based on the provided configuration or global DB setting.
@@ -595,32 +717,11 @@ def get_llm_instance(llm_config=None):
     return model
 
 
-def get_model():
-    """
-    Lazy-loads the model and binds tools only when needed.
-    """
-    global _llm
-    
-    if _llm is not None:
-        return _llm
+model = get_llm_instance()  # Initialize global model instance based on DB config or default
+llm = model
 
-    try:
-        base_llm = get_llm_instance()
-        
-        if base_llm is not None:
-            # 'tools' must be defined earlier in your file or imported
-            # llm= base_llm
-            logger.info("✅ Model and tools initialized successfully.")
-            return base_llm
-        
-    except Exception as e:
-        logger.error(f"❌ Unexpected error in get_model_with_tools: {e}", exc_info=True)
-    
-    return None
-
-# Call this function to initialize the model with tools when the module is loaded
-# --- CRITICAL: DO NOT CALL get_llm_instance() OR .bind_tools() HERE ---
-# By leaving this area empty, 'manage.py migrate' will now run successfully.
+model_with_tools = model.bind_tools(tools)  # Bind tools to the model for agent use
+llm_with_tools=model_with_tools
 
 # Initialize single shared DB instance (or None)
 db = get_sql_database_instance()
@@ -676,8 +777,8 @@ if db:
         # Assuming SQLDatabaseToolkit and create_agent are correctly imported
         # from langchain_community.agent_toolkits import SQLDatabaseToolkit
         # from langchain.agents import create_agent
-        llm = get_model()  # Get the LLM instance (which may be None if initialization failed)
-        toolkit = SQLDatabaseToolkit(db=db, llm=llm)  # Use the model with tools for the agent
+
+        toolkit = SQLDatabaseToolkit(db=db, llm=model)  # Use the model with tools for the agent
         tooly = toolkit.get_tools()
 
         # Change 1: Loop print changed to log_info
@@ -727,129 +828,11 @@ if db:
 # NOTE: ChatOllama is now used for both chat and tool calling
 
 
-
-
-
-
-
-GLOBAL_FINAL_ANSWER_PROMPT = """
-  You are Damilola, the AI-powered virtual assistant for ATB. Your role is to deliver professional customer service and insightful data analysis, depending on the user's needs.
-
-You operate in three modes:
-1. **Customer Support**: Respond with empathy, clarity, and professionalism. Your goal is to resolve issues, answer questions, and guide users to helpful resources — without technical jargon or internal system references.
-2. **Data Analyst**: Interpret data, explain trends, and offer actionable insights. When visualizations are included, describe what the chart shows and what it means for the user.
-3. **HR Assistant**: Respond with empathy, clarity, and professionalism regarding leave, payslips, and workplace policies.
-
-Your response must be:
-- **Final**: No follow-up questions or uncertainty.
-- **Clear and Polite**: Use emotionally intelligent language, especially if the user expresses frustration or confusion.
-- **Context-Aware**: Avoid mentioning internal systems (e.g., database names or SQL sources) .
-- **Structured**: Always return your answer in the following JSON format.
-- **Structured**: use naira sign whne currency us required 
-do not hallucinate, either use the tool or response that you are not sure if unsure 
-
-    OPERATING PROTOCOLS:
-    
-    PROTOCOL 1: LEAVE REQUESTS
-    - If the user wants to apply for leave, you MUST first call 'fetch_available_leave_types_tool'.
-    - If the user specifies a leave type NOT in the list provided by 'fetch_available_leave_types_tool':
-      1. Politely inform them that '[InvalidType]' is not available for their category.
-      2. Re-list the valid options.
-      3. Do NOT call 'prepare_leave_application_tool' until a valid type is selected.
-    - LEAVE YEAR LOGIC: Ask the user: "Is this leave for the current year or your previous year's carry-over?"
-      Current -> {current_year}, Previous -> {previous_year}.
-    - SUCCESS: After 'submit_leave_application_tool' confirms success, if it was 'Vacation', offer help with travel via 'search_travel_deals_tool'.
-
-    PROTOCOL 2: PAYSLIPS
-    - Once 'get_payslip_tool' returns, inform the user: 'Your payslip has been sent to your email.'
-
-    PROTOCOL 3: HR POLICIES & KNOWLEDGE
-    - For policy questions, use 'pdf_retrieval_tool' to search HR handbooks.
-
-    PROTOCOL 4: DATA ANALYTICS
-    - Use 'sql_query_tool' for data inquiries. Provide actionable insights.
-    - Use 'generate_visualization_tool' when the user asks to 'plot', 'chart', 'graph', or 'visualize'.
-      IMPORTANT: When visualizing, you MUST call 'sql_query_tool' first to fetch the data. Once 'sql_query_tool' returns the JSON data, pass that exact 'data' payload into the `data` parameter of 'generate_visualization_tool'. Do not pass the data as a string, pass the raw data object.
-
-    PROTOCOL 5: PROFILE UPDATES
-    - Use 'update_customer_tool' or 'update_employee_profile_tool'.
-    - If bank name is missing for an account update, ask for it before calling the tool.
-
-    PROTOCOL 6: LEAVE STATUS
-    - Use 'fetch_leave_status_tool' for approvals and pending status.
-
-    CONTEXT:
-    - Employee ID: {ID}
-    - Current Date: {current_date_str}
-    - Current Leave/Workflow Status: {status_summary}
-    - Document Context: {pdf_content}
-    - Web Context: {web_content}
-    - SQL Result: {sql_result}
-    
-
-    Tool Guide:{tool_intent_map}
-    - **`generate_visualization_tool`**: **Use this tool when the user asks to 'plot', 'chart', 'graph', or 'visualize' data. You MUST supply the `data` parameter using the results from `sql_query_tool`.**
-   
-    ### Available Tools & Required Arguments:
-    {tool_descriptions}
-
-       ### Output Format:
-You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
-```json
-{{
-  "answer": "Your response to the user",
-}}
-```
-    """
-
-
-tool_guide = {
-    "leave_management": {
-        "tools": ["fetch_available_leave_types_tool", "prepare_leave_application_tool", 
-                  "submit_leave_application_tool", "fetch_leave_status_tool", "calculate_num_of_days_tool"],
-        "triggers": ["leave", "vacation", "sick leave", "day off", "approve", "leave balance", "resumption"]
-    },
-    "payslip_services": {
-        "tools": ["get_payslip_tool"],
-        "triggers": ["payslip", "salary", "pay statement", "earnings", "payroll"]
-    },
-    "hr_policy": {
-        "tools": ["pdf_retrieval_tool"],
-        "triggers": ["policy", "handbook", "benefits", "hr guide", "rules"]
-    },
-    "data_analysis": {
-        "tools": ["sql_query_tool"],
-        "triggers": ["report", "count", "average", "total", "statistics", "data"]
-    },
-    "visualization": {
-        "tools": ["generate_visualization_tool"],
-        "triggers": ["plot", "chart", "graph", "visualize", "show as a bar chart"]
-    },
-    "profile_updates": {
-        "tools": ["update_employee_profile_tool", "create_customer_profile_tool", "get_customer_details_tool"],
-        "triggers": ["update", "profile", "phone number", "bank account", "details"]
-    },
-    "recruitment": {
-        "tools": ["search_job_opportunities_tool"],
-        "triggers": ["job", "vacancy", "career", "hiring", "position"]
-    },
-    "travel_concierge": {
-        "tools": ["search_travel_deals_tool"],
-        "triggers": ["flight", "hotel", "travel", "booking", "trip"]
-    },
-    "general_inquiry": {
-        "tools": ["web_search_tool"],
-        "triggers": ["what is", "how to", "who is", "search"]
-    }
-}
-
-
 # llm = llm.bind_tools(tools)
 tools_by_name = {tool.name: tool for tool in tools}
 # Ensure RunnableConfig is imported for the node signature
 
-GLOBAL_SCOPE = "GLOBAL"
-NO_CONVO = "N/A"
+
 def should_continue(state: State) -> Literal["tool_node", END]:
     """Decide if we should continue the loop or stop based upon whether the LLM made a tool call"""
 
@@ -867,156 +850,169 @@ def should_continue(state: State) -> Literal["tool_node", END]:
     )
     log_debug(f"Last LLM message: {last_message}", tenant_id, conversation_id)
 
-    if last_message and getattr(last_message, "tool_calls", None):
-        log_info(f"LLM made tool calls: {[tc.get('name', 'unknown') for tc in last_message.tool_calls]}. Continuing to tool node.", tenant_id, conversation_id)
-        return "tool_node"
-    
-    if last_message and "parsed_json" in last_message.additional_kwargs:
-        parsed = last_message.additional_kwargs["parsed_json"]
-    else:
-        # Try parsing from content if missing
-        import json
-        try:
-            if last_message:
-                content_str = last_message.content if isinstance(last_message.content, str) else str(getattr(last_message, "content", ""))
-                parsed = json.loads(content_str)
-            else:
-                parsed = {}
-        except:
-            parsed = {}
-
-    tool_name = parsed.get("tool", "none")
-    if not last_message or str(tool_name).lower() == "none" or not tool_name:
-        log_info("LLM requested 'none' or no valid tool. Ending workflow.", tenant_id, conversation_id)
+    if not last_message or not getattr(last_message, "tool_calls", None):
+        log_info("LLM made no tool calls. Ending workflow.", tenant_id, conversation_id)
         return END
 
     log_info(
-        f"LLM requested tool: {tool_name}. Continuing to tool node.", tenant_id, conversation_id
+        "LLM made tool calls. Continuing to tool node.", tenant_id, conversation_id
     )
     return "tool_node"
 
+
+
+# config.py or constants.py
+
+# 
+
+
 def tool_node(state: State) -> dict:
-    log_info("Entered tool_node for execution.", GLOBAL_SCOPE, NO_CONVO)
-    tenant_id = state.get("tenant_config", {}).get("tenant_id", "unknown")
+    """Performs the tool call, injecting state for specific tools if required."""
+    log_info( f"Tool node activated", "GLOBAL_SCOPE", "NO_CONVO")
+    # 1. Extract context for logging
+    tenant_config = state.get("tenant_config", {})
+    tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
-    
-    try:
-        last_ai_message = state["messages"][-1]
-        tool_calls = getattr(last_ai_message, "tool_calls", [])
-        log_debug(f"Tool calls to execute: {tool_calls}", tenant_id, conversation_id)
-        
-        if not tool_calls:
-            return {"messages": []}
+    log_info("Tool node activated", tenant_id, conversation_id)
 
-        new_messages = []
-        state_updates = {}
-        
-        for tool_call in tool_calls:
-            tool_name = tool_call.get("name")
-            tool_args = tool_call.get("args", {})
-            
-            # Handle nested 'arguments' key if present (LLM sometimes wraps args)
-            if "arguments" in tool_args:
-                tool_args = tool_args["arguments"]
-            
-            # Inject context
-            tool_args["state"] = {k: v for k, v in state.items() if k != "messages"}
-            
-            tool = tools_by_name.get(tool_name)
-            if not tool:
-                raise ValueError(f"Tool {tool_name} not found.")
+    # FIX: Find the AIMessage that actually contains the tool calls
+    last_ai_message = next(
+        (m for m in reversed(state["messages"]) if isinstance(m, AIMessage)), None
+    )
 
-            # Execution
-            observation = tool.invoke(tool_args)
-            
-            # State Update Logic
+    # result = []
+    new_messages = []
+    state_updates = {}
+
+    if not last_ai_message:
+        return {"messages": []}
+    # 2. Iterate through all tool calls requested by the LLM
+    for tool_call in state["messages"][-1].tool_calls:
+        tool_name = tool_call.get("name")
+
+        # Normalize tool name: strip non-ASCII / accidental unicode suffixes the LLM may add
+        normalized_name = re.sub(r"[^\x00-\x7F]+", "", str(tool_name or "")).strip()
+        if normalized_name != (tool_name or ""):
+            log_warning(
+                f"Normalizing tool name from {tool_name!r} to {normalized_name!r}",
+                tenant_id,
+                conversation_id,
+            )
+
+        # Try direct lookup with normalized name first, then original
+        tool = tools_by_name.get(normalized_name) or tools_by_name.get(tool_name)
+
+        # Fallback: fuzzy match by containment (covers small tokenization differences)
+        if tool is None:
+            for k in tools_by_name.keys():
+                if k in normalized_name or normalized_name in k:
+                    tool = tools_by_name[k]
+                    log_info(f"Fuzzy-matched tool name {tool_name!r} -> {k!r}", tenant_id, conversation_id)
+                    break
+
+        if tool is None:
+            # No usable tool found — surface a clear error for logging and upstream handling
+            log_error(f"LangGraph execution failed: {tool_name!r}", tenant_id, conversation_id)
+            raise Exception(f"Tool not found: {tool_name}")
+
+        # tool_args = tool_call["args"].copy() # Get LLM's arguments and make a copy
+        tool_args = (tool_call.get("args") or {}).copy()
+        # Inject the full state into the tool arguments
+        tool_args["state"] = state
+        # Pass along the call identifier so tools can report it back
+        tool_args["current_tool_id"] = tool_call.get("id")
+        # Invoke the tool
+        observation = tool.invoke(tool_args)
+
+        # --- Handle Structured Tool Output ---
+        # If the tool returned a dict, we extract content for the state and stringify for the LLM
+        if isinstance(observation, dict):
+            # Update specific state keys based on which tool was called
             if tool_name == "pdf_retrieval_tool":
                 state_updates["pdf_content"] = observation.get("pdf_content")
-            
-            new_messages.append(ToolMessage(
-                content=json.dumps(observation) if isinstance(observation, dict) else str(observation),
-                tool_call_id=tool_call.get("id"),
-                name=tool_name
-            ))
-            
-        log_info(f"Tool node executed successfully: {tool_name}", tenant_id, conversation_id)
+                # Store sources in metadata or a dedicated source list if needed
+                state_updates["type"] = "pdf"
+
+            elif tool_name == "web_search_tool":
+                state_updates["web_content"] = observation.get("web_content")
+                state_updates["type"] = "web"
+
+            # Convert dict to string for the ToolMessage so the LLM can read it
+            content_for_llm = json.dumps(observation)
+        else:
+            content_for_llm = str(observation)
+
+        new_messages.append(
+            ToolMessage(content=content_for_llm, tool_call_id=tool_call["id"])
+        )
+
+        log_info( f"Executed {len(new_messages)} tool calls.", tenant_id, conversation_id)
+        log_info( f"Executed {new_messages} tool calls.", tenant_id, conversation_id)
+
+        # Return both the messages and the updated content fields
         return {"messages": new_messages, **state_updates}
 
-    except Exception as e:
-        log_error(f"Critical failure in tool_node: {str(e)}", tenant_id, conversation_id)
-        return {"messages": [ToolMessage(content=f"Error executing tool: {e}", tool_call_id="error", name="error_handler")]}
+
 
 def extract_final_answer(response):
     """
     Robustly extract the final text answer from an LLM response or structured object.
     """
+    # Case 1: Structured Answer or dict
+    if isinstance(response, dict):
+        return response.get("answer") or json.dumps(response)
+    
+    # Case 2: AIMessage or object with .content
+    if hasattr(response, "content") and response.content:
+        content = response.content
+    else:
+        # Fallback if content is empty or response is not a message object
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            return "Executing tools..."
+        content = str(response) if response is not None else "LLM did not return a response"
+
+    # Clean up markdown and extract JSON blocks if present
+    content_clean = re.sub(r"^```json\s*|\s*```$", "", content.strip(), flags=re.MULTILINE)
+    
+    # Try direct parse
     try:
-        # Case 1: Structured Answer or dict
-        if isinstance(response, dict):
-            return response.get("answer") or json.dumps(response)
-        
-        # Case 2: AIMessage or object with .content
-        if hasattr(response, "content") and response.content:
-            content = response.content
-        else:
-            # Fallback if content is empty or response is not a message object
-            if hasattr(response, "tool_calls") and response.tool_calls:
-                return "Executing tools..."
-            content = str(response) if response is not None else "LLM did not return a response"
+        parsed = json.loads(content_clean)
+        if isinstance(parsed, dict) and "answer" in parsed:
+            return parsed["answer"]
+    except:
+        pass
 
-        # Clean up markdown and extract JSON blocks if present
-        content_clean = re.sub(r"^```json\s*|\s*```$", "", content.strip(), flags=re.MULTILINE)
-        
-        # Try direct parse
+    # Try searching for JSON-like blocks if direct parse failed
+    json_blocks = re.findall(r"\{.*?\}", content_clean, flags=re.DOTALL)
+    for block in json_blocks:
         try:
-            parsed = json.loads(content_clean)
-            if isinstance(parsed, dict) and "answer" in parsed:
-                return parsed["answer"]
-        except json.JSONDecodeError:
-            pass
+            obj = json.loads(block)
+            if isinstance(obj, dict) and "answer" in obj:
+                return obj["answer"]
+        except:
+            continue
 
-        # Try searching for JSON-like blocks if direct parse failed
-        json_blocks = re.findall(r"\{.*?\}", content_clean, flags=re.DOTALL)
-        for block in json_blocks:
-            try:
-                obj = json.loads(block)
-                if isinstance(obj, dict) and "answer" in obj:
-                    return obj["answer"]
-            except json.JSONDecodeError:
-                continue
-
-        return content_clean or "LLM returned empty response"
-    except Exception as e:
-        logger.error(f"Error in extract_final_answer: {e}")
-        return "Error extracting answer"
+    return content_clean or "LLM returned empty response"
 
 
 
 
-def clean_message_history(messages):
-    """
-    Strips additional_kwargs and serialized state from messages 
-    to prevent LLM confusion and circular reference errors.
-    """
-    cleaned = []
-    for msg in messages:
-        if isinstance(msg, AIMessage):
-            # Keep only the content and tool_calls, discard the state-heavy additional_kwargs
-            cleaned.append(AIMessage(
-                content=msg.content, 
-                tool_calls=msg.tool_calls
-            ))
-        elif isinstance(msg, ToolMessage):
-            # Keep only the tool result
-            cleaned.append(ToolMessage(
-                content=msg.content, 
-                tool_call_id=msg.tool_call_id, 
-                name=msg.name
-            ))
-        else:
-            # HumanMessage and SystemMessage are usually safe
-            cleaned.append(msg)
-    return cleaned
+
+# 2. Centralized Tool Call Validation
+import json
+import re
+import uuid
+import logging
+
+import json
+import uuid
+
+import json
+import uuid
+import logging
+
+# Configure logger (ensure this is configured in your main app)
+logger = logging.getLogger(__name__)
 
 def normalize_tool_calls(response):
     logger.info("Starting normalization of tool calls.")
@@ -1074,28 +1070,6 @@ def normalize_tool_calls(response):
                     "id": f"call_{uuid.uuid4().hex[:12]}",
                     "type": "tool_call"
                 })
-            elif isinstance(obj, dict) and "tool_call" in obj and isinstance(obj["tool_call"], dict):
-                logger.info(f"Successfully extracted tool_call: {obj['tool_call'].get('name')}")
-                tc = obj["tool_call"]
-                args = tc.get("arguments") or tc.get("args", {})
-                tool_calls.append({
-                    "name": tc["name"],
-                    "args": args,
-                    "id": tc.get("id", f"call_{uuid.uuid4().hex[:12]}"),
-                    "type": tc.get("type", "tool_call")
-                })
-            elif isinstance(obj, dict) and "tool_calls" in obj and isinstance(obj["tool_calls"], list):
-                logger.info(f"Successfully extracted tool_calls array with {len(obj['tool_calls'])} calls")
-                for tc in obj["tool_calls"]:
-                    if isinstance(tc, dict) and "name" in tc:
-                        # Map 'arguments' to 'args' if present
-                        args = tc.get("arguments") or tc.get("args", {})
-                        tool_calls.append({
-                            "name": tc["name"],
-                            "args": args,
-                            "id": tc.get("id", f"call_{uuid.uuid4().hex[:12]}"),
-                            "type": tc.get("type", "tool_call")
-                        })
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode JSON object at position {pos}: {e}")
             pos += 1  # Skip to next character to attempt recovery
@@ -1113,6 +1087,7 @@ def normalize_tool_calls(response):
         
     return response
 
+
 def assistant_node(state: State, config: RunnableConfig):
     """
     Consolidated Assistant Node: HR Support, Data Analytics, and Customer Concierge.
@@ -1120,14 +1095,11 @@ def assistant_node(state: State, config: RunnableConfig):
     """
     tenant_id = config["configurable"].get("tenant_id", "unknown")
     conversation_id = config["configurable"].get("thread_id", "unknown")
-    messages = state["messages"]
-    logger.info(f"Messages before assistant processing: {messages}")
-    log_info(f"Assistant node triggered for tenant: {tenant_id} with nessage : {messages}", tenant_id, conversation_id)
+    log_info(f"Assistant node triggered for tenant: {tenant_id}", tenant_id, conversation_id)
 
     # --- Resolve DB-sourced prompts with hardcoded fallbacks ---
     tenant_config = state.get("tenant_config") or {}
-    # employee_id = {state.get('employee_id')}
-    employee_id = str(state.get('employee_id', 'unknown'))
+    employee_id = {state.get('employee_id')}
     current_year = datetime.now().year
     previous_year = current_year - 1
     current_date_str = datetime.now().strftime("%Y-%m-%d")
@@ -1152,13 +1124,8 @@ def assistant_node(state: State, config: RunnableConfig):
     # Fetch the prompt template
     agent_prompt = tenant_config.get("agent_prompt1",GLOBAL_FINAL_ANSWER_PROMPT)
 
-    # Build string of tool descriptions and arguments
-    tool_descriptions = "\n".join([f"- {t.name}: {t.description}\n  Arguments schema: {t.args}" for t in tools])
-
     if agent_prompt:
-        try:
-            
-         system_prompt = agent_prompt.format(
+        system_prompt = agent_prompt.format(
             ID=employee_id,
             current_year=current_year,
             previous_year=previous_year,
@@ -1168,12 +1135,8 @@ def assistant_node(state: State, config: RunnableConfig):
             # Using leave_application for the state result as requested
             sql_result=sql_result,
             status_summary=status_summary,
-            tool_intent_map=tool_intent_map,
-            tool_descriptions=tool_descriptions
+            tool_intent_map=tool_intent_map
         )
-        except KeyError as e:
-            logger.error(f"Missing key in prompt template: {e}")
-            system_prompt = agent_prompt # Fallback to raw if format fails
     else:
         # Handle the case where no prompt is found
         system_prompt = "Default fallback prompt or error handling logic here."
@@ -1195,61 +1158,127 @@ def assistant_node(state: State, config: RunnableConfig):
         elif status == "error":
             status_summary = f"Process error: {leave_app.get('message')}"
 
-   
+    # 2. CONSOLIDATED SYSTEM PROMPT
+    # global_answer_prompt (DB) replaces GLOBAL_FINAL_ANSWER_PROMPT as the intro.
+    # If agent_prompt (full DB prompt) is set, it is used as the entire intro block.
+    intro_section = agent_prompt or global_answer_prompt
+    system_prompt1 = f"""
+    {intro_section}
+
+    OPERATING PROTOCOLS:
+    
+    PROTOCOL 1: LEAVE REQUESTS
+    - If the user wants to apply for leave, you MUST first call 'fetch_available_leave_types_tool'.
+    - If the user specifies a leave type NOT in the list provided by 'fetch_available_leave_types_tool':
+      1. Politely inform them that '[InvalidType]' is not available for their category.
+      2. Re-list the valid options.
+      3. Do NOT call 'prepare_leave_application_tool' until a valid type is selected.
+    - LEAVE YEAR LOGIC: Ask the user: "Is this leave for the current year or your previous year's carry-over?"
+      Current -> {current_year}, Previous -> {previous_year}.
+    - SUCCESS: After 'submit_leave_application_tool' confirms success, if it was 'Vacation', offer help with travel via 'search_travel_deals_tool'.
+
+    PROTOCOL 2: PAYSLIPS
+    - Once 'get_payslip_tool' returns, inform the user: 'Your payslip has been sent to your email.'
+
+    PROTOCOL 3: HR POLICIES & KNOWLEDGE
+    - For policy questions, use 'pdf_retrieval_tool' to search HR handbooks.
+
+    PROTOCOL 4: DATA ANALYTICS
+    - Use 'sql_query_tool' for data inquiries. Provide actionable insights.
+    - Use 'generate_visualization_tool'  when user  asked to 'plot', 'chart', 'graph', or 'visualize'.
+
+    PROTOCOL 5: PROFILE UPDATES
+    - Use 'update_customer_tool' or 'update_employee_profile_tool'.
+    - If bank name is missing for an account update, ask for it before calling the tool.
+
+    PROTOCOL 6: LEAVE STATUS
+    - Use 'fetch_leave_status_tool' for approvals and pending status.
+
+    CONTEXT:
+    - Employee ID: {state.get('employee_id')}
+    - Current Date: {current_date_str}
+    - Current Leave/Workflow Status: {status_summary}
+    - Document Context: {state.get('pdf_content', 'None')}
+    - Web Context: {state.get('web_content', 'None')}
+    - SQL Result: {state.get('sql_result', 'None')}
+    
+    ### Output Format:
+You MUST return ONLY a valid JSON object. Do not include any text outside the JSON block.
+```json
+{{
+  "answer": "Your response to the user",
+}}
+```
+    """
 
     # 3. LLM INVOCATION
- 
-    # Check if last message was a tool result (we might already be done)
+    prompt_model = get_llm_instance()
+    
+    # If we are ready for a final answer (no more tool calls intended or last was a tool result)
+    # we use structured output.
+    messages = state["messages"]
+    logger.info(f"Messages before assistant processing: {messages}")
+    
+    # Check if last message was a tool result
     if messages and isinstance(messages[-1], ToolMessage):
-        logger.info("Last message was a tool result. LLM will now generate the final JSON response based on the tool's output.")
-
-    print(f"!!! TRACE: assistant_node starting. Messages: {len(messages)}", flush=True)
-    try:
-        # 1. Capture the raw response WITH bind_tools
-        # Use the global 'llm' instance directly to avoid redundant/unstable DB calls inside the graph
-        llm = get_model() 
-        if not llm:
-            logger.error("LLM instance is not available. Returning error response.", tenant_id, conversation_id)
-            return {"messages": [AIMessage(content=json.dumps({"tool": "none", "answer": "Error: LLM not available."}))]}
-        
-        llm_with_tools = llm.bind_tools(tools)
-        safe_messages = clean_message_history(state["messages"])
+        logger.info("Last message was a tool result. Preparing to generate final answer with structured output.")
+        # Generate structured final answer
+        logger.info("Generating final structured answer.")
+        structured_llm = prompt_model.with_structured_output(Answer)
         try:
-            response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + safe_messages)
+            # final_answer_obj = structured_llm.invoke([SystemMessage(content=system_prompt)] + messages)
+            unstructured_response = prompt_model.invoke([SystemMessage(content=system_prompt)] + messages)
+            
+            if hasattr(unstructured_response, "tool_calls") and unstructured_response.tool_calls:
+                logger.info(f"Tool calls foundAtejjd: {unstructured_response.tool_calls}")
+                return {"messages": [unstructured_response]}  # keep the AIMessage intact
+            
         except Exception as e:
-            logger.error(f"LLM invoke failed: {e}", tenant_id, conversation_id)
-            return {"messages": [AIMessage(content=json.dumps({"answer": "I'm sorry, I'm experiencing connectivity issues. Please try again later."}))]}
-        
-        logger.info(f"LLM Raw Output: {response}", tenant_id, conversation_id)
-    except BaseException as e:
-        import traceback
-        logger.error(f"CRITICAL CRASH in assistant_node: {e}\n{traceback.format_exc()}", tenant_id, conversation_id)
-        raise e
-    refined_response = normalize_tool_calls(response)
-    if refined_response.tool_calls:
-        logger.info(f"Tool call detected: {refined_response.tool_calls}")
-        return {"messages": [refined_response]}
+            log_error(f"Structured output generation failed: {e}", tenant_id, conversation_id)
+            unstructured_response = None
+
+        if unstructured_response:
+            # Attach chart if present in state
+            viz_result = state.get("visualization_result")
+            if viz_result and "image_base64" in viz_result:
+                unstructured_response.chart_base64 = viz_result["image_base64"]
+
+            return {
+                "messages": [AIMessage(content=unstructured_response.content)],
+                # "leave_application": unstructured_response.dict(),
+                # "metadata": {"sentiment": unstructured_response.sentiment, "sources": unstructured_response.source}
+            }
+        else:
+            # Fallback to extract from raw invoke if structured fails
+            logger.warning("Falling back to raw extraction in assistant_node.")
+            response = prompt_model.invoke([SystemMessage(content=system_prompt)] + messages)
+            final_answer = extract_final_answer(response)
+            return {"messages": [AIMessage(content=final_answer)]}
+
+    # Otherwise, regular tool-calling invoke
+    llm_with_tools = prompt_model.bind_tools(tools)
+    
+    # Inside assistant_node, right after the LLM call:
+
+# 1. Capture the raw response
+    response = llm_with_tools.invoke([SystemMessage(content=system_prompt)] + messages)
+    logger.info(f"Raw LLM Output{response}.")
+    # Apply normalization
+    response = normalize_tool_calls(response)
+    # 3. Final Routing
+    if response.tool_calls:
+        logger.info(f"Tool call detected: {response.tool_calls}")
+        return {"messages": [response]}
     else:
         # Handle as standard text response
-        final_answer = extract_final_answer(refined_response)
+        final_answer = extract_final_answer(response)
         logger.info(f"LLM response Assitant Node: {final_answer}")
         return {"messages": [AIMessage(content=final_answer)]}
-    
-    # if hasattr(refined_response, "tool_calls") and refined_response.tool_calls:
-    #             logger.info(f"Tool calls foundAtejjd: {refined_response.tool_calls}")
-    #             return {"messages": [refined_response]}  # keep the AIMessage intact
 
-    # else:
-    #     extract_final_answer(refined_response) and (not hasattr(refined_response, "tool_calls") or not refined_response.tool_calls):
-    #         # Attach chart if present in state
-    #     viz_result = state.get("visualization_result")
-    #     if viz_result and "image_base64" in viz_result:
-    #             refined_response.chart_base64 = viz_result["image_base64"]
-                
-    #         return {
-    #             "messages": [AIMessage(content=refined_response.content)],
-    #             "status_summary": status_summary
-    #         }   
+  
+
+
+
 
 def build_graph(tenant_id: str, conversation_id: str, checkpointer=None):
     workflow = StateGraph(State)
@@ -1314,10 +1343,7 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
 
             
         # Using db_uri if present (idle but still accessible)
-        # db_uri = current_tenant.db_uri
-        db_uri=os.getenv("DATABASE_URL")
-        if not db_uri:
-            db_uri=os.getenv("DATABASE_URL")
+        db_uri = current_tenant.db_uri
         if not db_uri and tenant_obj:
             # Fallback: try to get db_uri from Tenant_AI's tenant relationship
             db_uri = current_tenant.tenant.code if hasattr(current_tenant, 'tenant') else None
@@ -1516,6 +1542,7 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
                 }
             }
             output = graph.invoke(State(**initial_state), config=config_dict) 
+            log_error(f"grapuy Raw State: {output}", tenant_id, conversation_id)
             log_info("LangGraph execution completed", tenant_id, conversation_id)
         except Exception as e:
             import traceback
@@ -1561,4 +1588,56 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
         logger.info(f"LLM Response Fallback: {fallback}")
         return {"answer": fallback, "metadata": {}}
 
+
+
+
+
+# def routing_guardrail_node(state: State):
+#     """
+#     Guardrail node: Validates tool calls and either allows them to proceed or
+#     sends them back to the assistant for correction.
+#     Returns a state dict indicating the next action.
+#     """
+#     logger.info("OYAS routing_guardrail_node  ")
+#     if not hasattr(state["messages"][-1], "tool_calls") or not state["messages"][-1].tool_calls:
+#         logger.info("OYAS jubilee")
+#         return {"next_node": END}
+
+#     # Use tenant-specific tool_intent_map from state; fall back to hardcoded constant.
+#     effective_tool_intent_map = (
+#         (state.get("tenant_config") or {}).get("tool_intent_map")
+#         or TOOL_INTENT_MAP
+#     )
+#     effective_tool_intent_map1=TOOL_INTENT_MAP
+#     user_input = next((m.content for m in reversed(state["messages"][:-1]) if hasattr(m, "content")), "").lower()
+#     logger.info(f"Guardrail checking tool calls against user input: {user_input}")
+
+#     for call in state["messages"][-1].tool_calls:
+#         tool_name = call["name"]
+#         is_allowed = False
+#         for intent, data in effective_tool_intent_map.items():
+#             if tool_name in data["tools"]:
+#                 if any(trigger in user_input for trigger in data["triggers"]):
+#                     is_allowed = True
+#                     break
+    
+#         if not is_allowed:
+#             logger.warning(f"Guardrail blocked unauthorized tool call: {tool_name}")
+#             return {
+#                 "messages": [SystemMessage(content=f"Unauthorized tool call: {tool_name}. Please re-evaluate.")], 
+#                 "next_node": "assistant_node"
+#             }
+
+#     return {"next_node": "tool_node"}
+
+
+# def route_after_guardrail(state: State) -> str:
+#     """
+#     Routing function for guardrail conditional edges.
+#     Extracts the next_node from the guardrail node's state.
+#     """
+#     next_node = state.get("next_node")
+#     if next_node == END:
+#         return END
+#     return next_node or "tool_node"
 
