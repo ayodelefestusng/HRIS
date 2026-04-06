@@ -17,7 +17,7 @@ from .chat_bot import get_llm_instance
 from .chat_bot import initialize_vector_store,process_message
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-
+from typing import Any, Dict, List, Literal, Optional, Union, Annotated
 @method_decorator(csrf_exempt, name='dispatch')
 class OnboardTenantView(View):
     def post(self, request):
@@ -975,111 +975,116 @@ from .models import Prompt
 # )
 
 
-# def _get_access_token_bot() -> str:
-#     from typing import Optional, List, Dict, Any
-#     BASE_URL = "https://api-devapps.vfdbank.systems/vtech-wallet/api/v2/wallet2"
-#     yourConsumerKey="mL1dqaMcB760EP3fR18Vc23qUSZy"
-#     yourConsumerSecret="ohAWPpabbj0UmMppmOgAFTazkjQt"
-#     AUTH_URL         = os.getenv("VFD_AUTH_URL",
-#     "https://api-devapps.vfdbank.systems/vfd-tech/baas-portal/v1.1/baasauth/token"
-# )
+def _get_access_token_bot() -> str:
+    from typing import Optional, List, Dict, Any
+    BASE_URL = "https://api-devapps.vfdbank.systems/vtech-wallet/api/v2/wallet2"
+    # yourConsumerKey="mL1dqaMcB760EP3fR18Vc23qUSZy"
+    # yourConsumerSecret="ohAWPpabbj0UmMppmOgAFTazkjQt"
 
-#     print("Requesting VFD access token...")
-#     logger.info("Initiating request to fetch VFD access token.")
+
+    yourConsumerKey     = os.getenv("VFD_CONSUMER_KEY",    "mL1dqaMcB760EP3fR18Vc23qUSZy")
+    yourConsumerSecret  = os.getenv("VFD_CONSUMER_SECRET", "ohAWPpabbj0UmMppmOgAFTazkjQt")
+    AUTH_URL         = os.getenv("VFD_AUTH_URL",
+    "https://api-devapps.vfdbank.systems/vfd-tech/baas-portal/v1.1/baasauth/token"
+)
+
+    print("Requesting VFD access token...")
+    logger.info("Initiating request to fetch VFD access token.")
     
-#     payload = {
-#         "consumerKey":    yourConsumerKey,
-#         "consumerSecret": yourConsumerSecret,
-#         "validityTime":   "-1",
-#     }
-#     resp = requests.post(
-#         AUTH_URL,
-#         json=payload,
-#         headers={"Content-Type": "application/json"},
-#         timeout=30,
-#     )
-#     data = resp.json()
-#     if data.get("status") == "00":
-#         return data["data"]["access_token"]
-#     raise RuntimeError(f"VFD auth failed: {data}")
+    payload = {
+        "consumerKey":    yourConsumerKey,
+        "consumerSecret": yourConsumerSecret,
+        "validityTime":   "-1",
+    }
+    resp = requests.post(
+        AUTH_URL,
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=30,
+    )
+    data = resp.json()
+    if data.get("status") == "00":
+        return data["data"]["access_token"]
+    raise RuntimeError(f"VFD auth failed: {data}")
 
 
-# # token = get_access_token()
-# token = _get_access_token_bot()
+# token = get_access_token()
+token = _get_access_token_bot()
 
 
-# class VFDBillsPaymentClient:
-#     def __init__(self, access_token: str):
-#         self.base_url = "https://api-devapps.vfdbank.systems/vtech-bills/api/v2/billspaymentstore"
-#         self.headers = {
-#             "AccessToken": access_token,
-#             "Content-Type": "application/json"
-#         }
-#     def get_biller_items(self, biller_id: str, division_id: str, product_id: str) -> Optional[List[Dict[str, Any]]]:
-#         endpoint = f"{self.base_url}/billerItems?billerId={biller_id}&divisionId={division_id}&productId={product_id}"
-#         try:
-#             logger.info(f"Fetching biller items for {biller_id}")
-#             response = requests.get(endpoint, headers=self.headers, timeout=10)
-#             response.raise_for_status()
-#             payload = response.json()
-#             if payload.get("status") == "00":
-#                 return payload["data"].get("paymentitems", [])
-#             logger.error(f"Unsuccessful status for biller items: {payload.get('message')}")
-#             return None
-#         except Exception as e:
-#             logger.error(f"Error fetching biller items: {e}")
-#             return None
-#     def get_biller_categories(self) -> Optional[List[Dict[str, Any]]]:
-#         endpoint = f"{self.base_url}/billercategory"
-#         try:
-#             logger.info(f"Fetching biller categories from {endpoint}")
-#             response = requests.get(endpoint, headers=self.headers, timeout=10)
-#             response.raise_for_status()
-#             payload = response.json()
-#             if payload.get("status") == "00":
-#                 return payload.get("data", [])
-#             logger.error(f"Unsuccessful status: {payload.get('message')}")
-#             return None
-#         except Exception as e:
-#             logger.error(f"Error fetching categories: {e}")
-#             return None
+class VFDBillsPaymentClient:
+    def __init__(self, access_token: str):
+        self.base_url = "https://api-devapps.vfdbank.systems/vtech-bills/api/v2/billspaymentstore"
+        self.headers = {
+            "AccessToken": access_token,
+            "Content-Type": "application/json"
+        }
+    def get_biller_items(self, biller_id: str, division_id: str, product_id: str) -> Optional[List[Dict[str, Any]]]:
+        endpoint = f"{self.base_url}/billerItems?billerId={biller_id}&divisionId={division_id}&productId={product_id}"
+        try:
+            logger.info(f"Fetching biller items for {biller_id}")
+            response = requests.get(endpoint, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("status") == "00":
+                return payload["data"].get("paymentitems", [])
+            logger.error(f"Unsuccessful status for biller items: {payload.get('message')}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching biller items: {e}")
+            return None
+    def get_biller_categories(self) -> Optional[List[Dict[str, Any]]]:
+        endpoint = f"{self.base_url}/billercategory"
+        try:
+            logger.info(f"Fetching biller categories from {endpoint}")
+            response = requests.get(endpoint, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("status") == "00":
+                return payload.get("data", [])
+            logger.error(f"Unsuccessful status: {payload.get('message')}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching categories: {e}")
+            return None
 
-#     def get_billers_by_category(self, category_name: str) -> Optional[List[Dict[str, Any]]]:
-#         endpoint = f"{self.base_url}/billerlist?categoryName={category_name}"
-#         try:
-#             logger.info(f"Fetching billers for category {category_name} from {endpoint}")
-#             response = requests.get(endpoint, headers=self.headers, timeout=10)
-#             response.raise_for_status()
-#             payload = response.json()
-#             if payload.get("status") == "00":
-#                 return payload.get("data", [])
-#             logger.error(f"Unsuccessful status for {category_name}: {payload.get('message')}")
-#             return None
-#         except Exception as e:
-#             logger.error(f"Error fetching billers for {category_name}: {e}")
-#             return None
+    def get_billers_by_category(self, category_name: str) -> Optional[List[Dict[str, Any]]]:
+        endpoint = f"{self.base_url}/billerlist?categoryName={category_name}"
+        try:
+            logger.info(f"Fetching billers for category {category_name} from {endpoint}")
+            response = requests.get(endpoint, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("status") == "00":
+                return payload.get("data", [])
+            logger.error(f"Unsuccessful status for {category_name}: {payload.get('message')}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching billers for {category_name}: {e}")
+            return None
+    
 
-#     def get_all_billers(self) -> List[Dict[str, Any]]:
-#         """
-#         Iterates over all categories and fetches billers for each.
-#         Returns a combined list of all billers.
-#         """
-#         all_billers: List[Dict[str, Any]] = []
-#         categories = self.get_biller_categories()
-#         if not categories:
-#             logger.error("No categories found, cannot fetch billers.")
-#             return []
+    def get_all_billers(self) -> List[Dict[str, Any]]:
+        """
+        Iterates over all categories and fetches billers for each.
+        Returns a combined list of all billers.
+        """
+        all_billers: List[Dict[str, Any]] = []
+        categories = self.get_biller_categories()
+        if not categories:
+            logger.error("No categories found, cannot fetch billers.")
+            return []
 
-#         for cat in categories:
-#             category_name = cat.get("category")
-#             if not category_name:
-#                 continue
-#             billers = self.get_billers_by_category(category_name)
-#             if billers:
-#                 all_billers.extend(billers)
+        for cat in categories:
+            category_name = cat.get("category")
+            if not category_name:
+                continue
+            billers = self.get_billers_by_category(category_name)
+            if billers:
+                all_billers.extend(billers)
 
-#         logger.info(f"Total billers fetched: {len(all_billers)}")
-#         return all_billers
+        logger.info(f"Total billers fetched: {len(all_billers)}")
+        return all_billers
 
 
 def update_biller_items(request):
