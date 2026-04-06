@@ -1,0 +1,396 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Loan Offer Review | RosaPay</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a2342 0%, #1a4a7a 50%, #0d3060 100%);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 28px 16px 48px;
+    }
+
+    /* ── Card ─────────────────────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.30);
+      max-width: 520px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────────── */
+    .card-header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2a5298 100%);
+      padding: 36px 40px 28px;
+      text-align: center;
+      position: relative;
+    }
+    .card-header::after {
+      content: ''; position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 24px; background: #fff;
+      border-radius: 24px 24px 0 0;
+    }
+    .bank-logo {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin-bottom: 14px;
+    }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text { color: #fff; font-size: 22px; font-weight: 700; }
+    .logo-text span { color: #93c5fd; }
+    .header-title { color: rgba(255,255,255,0.9); font-size: 16px; font-weight: 500; }
+
+    /* ── Body ────────────────────────────────────────────────────────────────── */
+    .card-body { padding: 32px 40px 40px; }
+
+    /* ── Customer Banner ─────────────────────────────────────────────────────── */
+    .customer-banner {
+      background: #f0f9ff;
+      border: 1.5px solid #bae0fd;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .customer-icon { font-size: 22px; }
+    .customer-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .customer-acc  { font-size: 13px; color: #475569; margin-top: 2px; }
+    .customer-acc strong {
+      font-family: 'Courier New', monospace;
+      color: #0369a1; font-size: 13.5px;
+    }
+
+    /* ── Section Title ───────────────────────────────────────────────────────── */
+    .section-title { font-size: 19px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+    .section-sub   { font-size: 13.5px; color: #64748b; margin-bottom: 24px; line-height: 1.5; }
+
+    /* ── Tier Badge ──────────────────────────────────────────────────────────── */
+    .tier-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+      color: #fff; border-radius: 8px;
+      padding: 5px 12px; font-size: 13px; font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    /* ── Loan Summary Table ──────────────────────────────────────────────────── */
+    .loan-summary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .summary-header {
+      background: linear-gradient(135deg, #1e3a5f, #2a5298);
+      color: #fff; padding: 14px 20px;
+      font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.7px;
+    }
+    .summary-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 13px 20px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row.highlight { background: #eff6ff; }
+    .summary-row.total-row {
+      background: linear-gradient(135deg, #0a6e3f08, #0f915310);
+      border-top: 2px solid #0a6e3f;
+    }
+    .row-label { font-size: 13.5px; color: #64748b; font-weight: 500; }
+    .row-value { font-size: 14px; color: #111827; font-weight: 700; }
+    .row-value.green  { color: #0a6e3f; }
+    .row-value.total  { color: #0a6e3f; font-size: 16px; }
+    .row-value.accent { color: #1e3a5f; }
+
+    /* ── Fee Notice ───────────────────────────────────────────────────────────── */
+    .fee-notice {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 13px; color: #92400e; line-height: 1.55;
+    }
+    .fee-icon { font-size: 15px; flex-shrink: 0; }
+
+    /* ── Form ────────────────────────────────────────────────────────────────── */
+    .section-divider {
+      border: none; border-top: 1px solid #f1f5f9;
+      margin: 28px 0 24px;
+    }
+    .confirm-title { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+    .confirm-sub   { font-size: 13px; color: #64748b; margin-bottom: 20px; line-height: 1.5; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 7px; }
+    .input-wrap { position: relative; margin-bottom: 20px; }
+    input[type="password"], input[type="text"] {
+      width: 100%; padding: 13px 48px 13px 16px;
+      border: 1.5px solid #d1d5db; border-radius: 10px;
+      font-size: 15px; color: #111827; outline: none;
+      background: #fafafa;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus {
+      border-color: #1e3a5f;
+      box-shadow: 0 0 0 3px rgba(30,58,95,0.10);
+      background: #fff;
+    }
+    .eye-btn {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      font-size: 18px; color: #9ca3af;
+    }
+    .eye-btn:hover { color: #374151; }
+
+    /* ── Alert ───────────────────────────────────────────────────────────────── */
+    .alert {
+      border-radius: 10px; padding: 13px 16px;
+      font-size: 13.5px; margin-bottom: 18px;
+      display: flex; gap: 9px; align-items: flex-start; line-height: 1.5;
+    }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .alert-icon  { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Terms Notice ────────────────────────────────────────────────────────── */
+    .terms-notice {
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 10px; padding: 14px 16px;
+      font-size: 12.5px; color: #64748b;
+      line-height: 1.65; margin-bottom: 24px;
+    }
+    .terms-notice strong { color: #374151; }
+
+    /* ── Button ──────────────────────────────────────────────────────────────── */
+    .btn-confirm {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #0a6e3f 0%, #0f9153 100%);
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(10,110,63,0.35);
+      transition: opacity 0.2s, box-shadow 0.2s;
+    }
+    .btn-confirm:hover { opacity: 0.91; box-shadow: 0 6px 20px rgba(10,110,63,0.45); }
+    .btn-confirm:disabled { background: #9ca3af; box-shadow: none; cursor: not-allowed; }
+
+    /* ── Footer ──────────────────────────────────────────────────────────────── */
+    .card-footer {
+      text-align: center; padding: 16px 40px 28px;
+      border-top: 1px solid #f1f5f9;
+    }
+    .card-footer p { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+    .security-badges { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
+    .badge { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+
+    /* ── Already Accepted State ──────────────────────────────────────────────── */
+    .done-page { text-align: center; padding: 20px 0; }
+    .done-icon { font-size: 56px; margin-bottom: 16px; }
+    .done-page h2 { font-size: 21px; color: #0f172a; margin-bottom: 10px; }
+    .done-page p  { font-size: 14.5px; color: #64748b; line-height: 1.6; }
+
+    @media (max-width: 480px) {
+      .card-body, .card-footer { padding-left: 24px; padding-right: 24px; }
+      .card-header { padding-left: 24px; padding-right: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Header -->
+  <div class="card-header">
+    <div class="bank-logo">
+      <div class="logo-icon">🏦</div>
+      <div class="logo-text">Rosa<span>Pay</span></div>
+    </div>
+    <p class="header-title">Loan Offer Review & Acceptance</p>
+  </div>
+
+  <div class="card-body">
+
+    {% if already_accepted %}
+    <!-- Already accepted state -->
+    <div class="done-page">
+      <div class="done-icon">✅</div>
+      <h2>Loan Already Accepted</h2>
+      <p>
+        This loan offer has already been accepted and processed,
+        {{ customer_name }}.<br><br>
+        Return to WhatsApp to check your account balance and loan status.
+      </p>
+    </div>
+
+    {% else %}
+
+    <!-- Customer banner -->
+    <div class="customer-banner">
+      <div class="customer-icon">👤</div>
+      <div>
+        <div class="customer-name">{{ customer_name }}</div>
+        <div class="customer-acc">
+          Account: <strong>{{ account_number }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-title">Your Loan Offer</p>
+    <p class="section-sub">
+      Please review the terms below carefully before accepting.
+      Once confirmed, this loan will be disbursed to your account.
+    </p>
+
+    <!-- Tier badge -->
+    <div class="tier-badge">🥉 {{ tier_name }} Tier</div>
+
+    <!-- Loan summary table -->
+    <div class="loan-summary">
+      <div class="summary-header">📋 Loan Breakdown</div>
+
+      <div class="summary-row highlight">
+        <span class="row-label">Principal (Loan Amount)</span>
+        <span class="row-value accent">₦{{ amount_requested|floatformat:2 }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="row-label">Monthly Interest Rate</span>
+        <span class="row-value">{{ interest_rate }}%</span>
+      </div>
+      <div class="summary-row">
+        <span class="row-label">Monthly Interest Amount</span>
+        <span class="row-value">₦{{ monthly_interest|floatformat:2 }}</span>
+      </div>
+      <div class="summary-row highlight">
+        <span class="row-label">Monthly Repayment</span>
+        <span class="row-value green">₦{{ monthly_repayment|floatformat:2 }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="row-label">Loan Tenor</span>
+        <span class="row-value">{{ tenor }} month{{ tenor|pluralize }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="row-label">Processing Fee</span>
+        <span class="row-value">₦{{ process_fee|floatformat:2 }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="row-label">Late Payment Penalty</span>
+        <span class="row-value">₦{{ late_fee|floatformat:2 }}</span>
+      </div>
+      <div class="summary-row total-row">
+        <span class="row-label" style="font-weight:700;color:#111827;">Total Amount Due</span>
+        <span class="row-value total">₦{{ total_loan_due|floatformat:2 }}</span>
+      </div>
+    </div>
+
+    <!-- Fee notice -->
+    <div class="fee-notice">
+      <span class="fee-icon">⚠️</span>
+      <span>
+        A <strong>processing fee of ₦{{ process_fee|floatformat:2 }}</strong> will be deducted
+        from the disbursed amount. Late repayments attract a
+        <strong>penalty of ₦{{ late_fee|floatformat:2 }}</strong> per occurrence.
+        Please ensure repayments are made on time to protect your credit rating.
+      </span>
+    </div>
+
+    <!-- Server-side error -->
+    {% if form_error %}
+    <div class="alert alert-error">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ form_error }}</span>
+    </div>
+    {% endif %}
+
+    <hr class="section-divider" />
+
+    <!-- Password confirmation form -->
+    <p class="confirm-title">🔐 Confirm with Your Password</p>
+    <p class="confirm-sub">
+      Enter your banking password to formally accept this loan offer.
+      This action cannot be undone once submitted.
+    </p>
+
+    <form method="POST" id="loanForm" autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="loan_id" value="{{ loan_id }}" />
+
+      <div>
+        <label for="password">Banking Password</label>
+        <div class="input-wrap">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your banking password"
+            autocomplete="current-password"
+            required
+          />
+          <button type="button" class="eye-btn" onclick="toggleVis('password', this)">👁️</button>
+        </div>
+      </div>
+
+      <!-- Terms acknowledgement -->
+      <div class="terms-notice">
+        By clicking <strong>"Accept Loan Offer"</strong>, I confirm that I have read
+        and understood the repayment terms above. I authorise RosaPay to disburse
+        <strong>₦{{ amount_requested|floatformat:2 }}</strong> to my account
+        (<strong>{{ account_number }}</strong>) and agree to repay
+        <strong>₦{{ monthly_repayment|floatformat:2 }}</strong> per month for
+        <strong>{{ tenor }} month{{ tenor|pluralize }}</strong>,
+        totalling <strong>₦{{ total_loan_due|floatformat:2 }}</strong>.
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn-confirm">
+        ✅ &nbsp;Accept Loan Offer
+      </button>
+    </form>
+
+    {% endif %}
+  </div><!-- /card-body -->
+
+  <!-- Footer -->
+  <div class="card-footer">
+    <p>Secured connection · Your data is encrypted · CBN Licensed</p>
+    <div class="security-badges">
+      <span class="badge">🔒 256-bit SSL</span>
+      <span class="badge">🛡️ NDPR Compliant</span>
+      <span class="badge">✅ CBN Licensed</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggleVis(id, btn) {
+    const el = document.getElementById(id);
+    const hidden = el.type === 'password';
+    el.type = hidden ? 'text' : 'password';
+    btn.textContent = hidden ? '🙈' : '👁️';
+  }
+
+  document.getElementById('loanForm')?.addEventListener('submit', function () {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳  Processing…';
+  });
+</script>
+
+</body>
+</html>

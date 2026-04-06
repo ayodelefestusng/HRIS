@@ -77,6 +77,11 @@ class JobPostingForm(forms.ModelForm):
             self.fields['locations'].queryset = Location.objects.none()
 
         self.fields['role'].label_from_instance = lambda obj: f"{obj.job_title.name if obj.job_title else 'Unnamed Role'}"
+
+
+from django import forms
+from datetime import datetime, timedelta
+
 class InterviewForm(forms.ModelForm):
     class Meta:
         model = Interview
@@ -96,11 +101,27 @@ class InterviewForm(forms.ModelForm):
             self.fields['application'].queryset = Application.objects.filter(tenant=self.tenant)
         
         self.fields['interviewers'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+        # Generate choices for today + next 5 days
+        today = datetime.now().date()
+        choices = []
+        for i in range(6):
+            day = today + timedelta(days=i)
+            # Format for display and value
+            choices.append((day.strftime("%Y-%m-%d"), day.strftime("%A, %d %B %Y")))
+
+        self.fields['scheduled_at'] = forms.ChoiceField(
+            choices=choices,
+            widget=forms.Select(attrs={'class': 'form-select'})
+        )
+
 
     def clean(self):
         cleaned_data = super().clean()
         scheduled_at = cleaned_data.get('scheduled_at')
         interviewers = cleaned_data.get('interviewers')
+        if scheduled_at:
+            # Convert back to datetime for conflict check
+            scheduled_at = datetime.strptime(scheduled_at, "%Y-%m-%d")
 
         if scheduled_at and interviewers:
             # We assume an interview lasts roughly 1 hour. 

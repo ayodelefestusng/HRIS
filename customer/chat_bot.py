@@ -224,11 +224,6 @@ def log_exception_auto(msg, tenant_id, conversation_id):
 
 
 
-# 2. Model/Service Name Variables
-OLLAMA_BASE_URL = "https://ai.notchhr.io/api/chat/local"
-OLLAMA_USERNAME = "ai-user"
-OLLAMA_PASSWORD = "x2GS7jEF@#2T"
-OLLAMA_MODEL = "gpt-oss-safeguard:20b"
 
 embeddings = None
 
@@ -618,6 +613,8 @@ def get_model():
     
     return None
 
+
+
 # Call this function to initialize the model with tools when the module is loaded
 # --- CRITICAL: DO NOT CALL get_llm_instance() OR .bind_tools() HERE ---
 # By leaving this area empty, 'manage.py migrate' will now run successfully.
@@ -688,7 +685,7 @@ if db:
         - You must query only the necessary columns.
         - You must double-check your query before execution.
         - DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP).
-        - ALWAYS look at the tables first to understand the schema.
+        - If you need to understand the schema, try to query the table directly; if it fails, infer from the error.
         - always limit your query to at most {top_k} results.
         - IMPORTANT: Your final response MUST be a valid JSON object with two keys:
           1. "analysis": A brief text explanation of the results.
@@ -766,10 +763,11 @@ do not hallucinate, either use the tool or response that you are not sure if uns
     PROTOCOL 3: HR POLICIES & KNOWLEDGE
     - For policy questions, use 'pdf_retrieval_tool' to search HR handbooks.
 
-    PROTOCOL 4: DATA ANALYTICS
+    PROTOCOL 4: DATA ANALYTICS AND VISUALIZATION
     - Use 'sql_query_tool' for data inquiries. Provide actionable insights.
-    - Use 'generate_visualization_tool' when the user asks to 'plot', 'chart', 'graph', or 'visualize'.
-      IMPORTANT: When visualizing, you MUST call 'sql_query_tool' first to fetch the data. Once 'sql_query_tool' returns the JSON data, pass that exact 'data' payload into the `data` parameter of 'generate_visualization_tool'. Do not pass the data as a string, pass the raw data object.
+    - For visualization requests (plot, chart, graph, visualize), ALWAYS chain: First call 'sql_query_tool' to fetch data, then call 'generate_visualization_tool' with the exact 'data' payload from 'sql_query_tool'.
+    - IMPORTANT: When visualizing, you MUST call 'sql_query_tool' first to fetch the data. Once 'sql_query_tool' returns the JSON data, pass that exact 'data' payload into the `data` parameter of 'generate_visualization_tool'. Do not pass the data as a string, pass the raw data object.
+    - If 'sql_query_tool' returns no data, do not call 'generate_visualization_tool'.
 
     PROTOCOL 5: PROFILE UPDATES
     - Use 'update_customer_tool' or 'update_employee_profile_tool'.
@@ -817,13 +815,9 @@ tool_guide = {
         "tools": ["pdf_retrieval_tool"],
         "triggers": ["policy", "handbook", "benefits", "hr guide", "rules"]
     },
-    "data_analysis": {
-        "tools": ["sql_query_tool"],
-        "triggers": ["report", "count", "average", "total", "statistics", "data"]
-    },
-    "visualization": {
-        "tools": ["generate_visualization_tool"],
-        "triggers": ["plot", "chart", "graph", "visualize", "show as a bar chart"]
+    "data_visualization": {
+        "tools": ["sql_query_tool", "generate_visualization_tool"],
+        "triggers": ["plot", "chart", "graph", "visualize", "show as a bar chart", "report", "count", "average", "total", "statistics", "data"]
     },
     "profile_updates": {
         "tools": ["update_employee_profile_tool", "create_customer_profile_tool", "get_customer_details_tool"],
@@ -932,6 +926,15 @@ def tool_node(state: State) -> dict:
             # State Update Logic
             if tool_name == "pdf_retrieval_tool":
                 state_updates["pdf_content"] = observation.get("pdf_content")
+            
+            if tool_name == "generate_visualization_tool":
+                if isinstance(observation, dict) and "visualization_result" in observation:
+                    viz_result = observation["visualization_result"]
+                    state_updates["visualization_image"] = viz_result.get("image_base64")
+                    state_updates["visualization_analysis"] = viz_result.get("analysis")
+                elif hasattr(observation, 'update'):
+                    # If it's a Command, the update is handled by LangGraph
+                    pass
             
             new_messages.append(ToolMessage(
                 content=json.dumps(observation) if isinstance(observation, dict) else str(observation),
@@ -1548,6 +1551,8 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
         return {
             "answer": current_answer,
             "metadata": metadata,
+            "visualization_image": output.get("visualization_image"),
+            "visualization_analysis": output.get("visualization_analysis"),
         }
     else:
         last_message = output.get("messages", [AIMessage(content="Internal error.")])[-1]
@@ -1559,6 +1564,6 @@ def process_message(message_content: str,conversation_id: str,tenant_id: str,emp
             fallback = str(last_message)
 
         logger.info(f"LLM Response Fallback: {fallback}")
-        return {"answer": fallback, "metadata": {}}
+        return {"answer": fallback, "metadata": {}, "visualization_image": None, "visualization_analysis": None}
 
 

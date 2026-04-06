@@ -341,3 +341,5 @@ class State(MessagesState):
     update_info: Optional[dict]
     job_opportunities: Optional[List[dict]]
     leave_status: Optional[dict]
+    visualization_image: Optional[str]
+    visualization_analysis: Optional[str]

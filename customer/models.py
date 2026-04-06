@@ -29,6 +29,16 @@ from django.utils import log, timezone
 from workflow.models import WorkflowCompatibleModel
 from org.views import log_with_context
 import logging
+import uuid
+from django.db import models
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password, check_password
+from django.core.validators import RegexValidator
+from decimal import Decimal
+import random
+import uuid
+from datetime import timedelta
+
 logger = logging.getLogger(__name__)
 # Extending Django's User model for CRM-specific fields
 class CRMUser(TenantModel):
@@ -305,6 +315,15 @@ def validate_account_number(value):
         raise ValidationError("Account number must contain only digits.")
     if len(value) != 10:
         raise ValidationError("Account number must be exactly 10 digits.")
+validate_nin = RegexValidator(
+    regex=r'^\d{11}$',
+    message="NIN must be exactly 11 digits.",
+)
+
+PASSWORD_COMPLEXITY_HELP = (
+    "Must be at least 8 characters and contain an uppercase letter, "
+    "a lowercase letter, a digit, and a special character (@$!%*?&#)."
+)
 
 
 class Customer(TenantModel):
@@ -318,6 +337,31 @@ class Customer(TenantModel):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=20, unique=True, validators=[validate_nigerian_prefix])
     account_number = models.CharField(max_length=20, unique=True, validators=[validate_account_number])
+     # ── NEW FIELDS ────────────────────────────────────────────────────────────
+    nin = models.CharField(
+        max_length=11,
+        # null=True,
+        # blank=True, 
+        unique=True,
+        validators=[validate_nin],
+        help_text="11-digit National Identification Number (NIN).",
+    )
+    password = models.CharField(
+        max_length=256,
+        blank=True,
+        default="",
+        help_text="PBKDF2-hashed service password.  Never store plain text.",
+    )
+
+    authenticated = models.BooleanField(default=False)
+    password_created = models.BooleanField(default=False)
+    otp_code = models.CharField(max_length=6, null=True, blank=True)
+    otp_expiry = models.DateTimeField(null=True, blank=True)
+    otp_used = models.BooleanField(default=False)
+     # New fields for PIN lockout
+    password_attempts = models.IntegerField(default=0)  # count failed attempts
+    password_locked = models.BooleanField(default=False)  # lock status
+    # ── END NEW FIELDS ────────────────────────────────────────────────────────
 
     gender = models.CharField(max_length=10, choices=[("male", "Male"), ("female", "Female")])
     # city_of_residence = models.CharField(max_length=100)
@@ -329,16 +373,365 @@ class Customer(TenantModel):
     date_of_birth = models.DateField()
 
     branch = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, related_name='customer_branch')  # Customer's registered branch
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # ── Helpers ───────────────────────────────────────────────────────────────
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
+    @property
+    def has_password(self) -> bool:
+        """True once the customer has completed the password-creation flow."""
+        return bool(self.password)
+
+    def set_password(self, raw_password: str) -> None:
+        """Hash and store a new password."""
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password: str) -> bool:
+        """Verify a plain-text password against the stored hash."""
+        return check_password(raw_password, self.password)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} - {self.account_number}"
+        return f"{self.first_name} – {self.account_number}"
 
     def clean(self):
-        """Custom validation for phone numbers and account numbers."""
+        """Custom field-level validation (unchanged from original)."""
         if not self.phone_number.startswith("0") or self.phone_number[1] not in "6789":
-            raise ValueError("Phone number must start with '0' and second digit must be between 6 and 9.")
+            raise ValueError(
+                "Phone number must start with '0' and second digit must be 6–9."
+            )
         if len(self.account_number) != 10 or not self.account_number.isdigit():
             raise ValueError("Account number must be exactly 10 digits.")
+        if len(self.nin) != 11 or not self.nin.isdigit():
+            raise ValueError("NIN must be exactly 11 digits.")
+    # def __str__(self):
+    #     return f"{self.first_name} {self.last_name} - {self.account_number}"
+
+    # def clean(self):
+    #     """Custom validation for phone numbers and account numbers."""
+    #     if not self.phone_number.startswith("0") or self.phone_number[1] not in "6789":
+    #         raise ValueError("Phone number must start with '0' and second digit must be between 6 and 9.")
+    #     if len(self.account_number) != 10 or not self.account_number.isdigit():
+    #         raise ValueError("Account number must be exactly 10 digits.")
+
+    class Meta:
+        verbose_name = "Customer"
+        verbose_name_plural = "Customers"
+        ordering = ["last_name", "first_name"]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 2.  PASSWORD SETUP TOKEN  (new)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class PasswordSetupToken(TenantModel):
+    """
+    Single-use, time-limited token that gates the password-creation page.
+
+    Lifecycle
+      1. Created  → tool generates link: /banking/set-password/<token>/
+      2. Customer opens link → view validates token (unused + not expired)
+      3. Customer submits password → token marked used, redirect to success
+      4. Any subsequent visit returns 410 Gone
+    """
+    token       = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    customer    = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="password_setup_tokens",
+    )
+    created_at  = models.DateTimeField(auto_now_add=True)
+    expires_at  = models.DateTimeField()          # set to created_at + 24 h by the tool
+    is_used     = models.BooleanField(default=False)
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+    @property
+    def is_valid(self) -> bool:
+        """True iff the token has not been used and has not expired."""
+        return (not self.is_used) and (timezone.now() < self.expires_at)
+
+    def mark_used(self) -> None:
+        self.is_used = True
+        self.save(update_fields=["is_used"])
+
+    def __str__(self):
+        status = "used" if self.is_used else ("expired" if not self.is_valid else "valid")
+        return f"Token({self.token}) → {self.customer.account_number} [{status}]"
+
+    class Meta:
+        verbose_name = "Password Setup Token"
+        verbose_name_plural = "Password Setup Tokens"
+        ordering = ["-created_at"]
+
+"""
+otp_model_addition.py
+────────────────────────────────────────────────────────────────────────────────
+Add to your existing models.py.
+
+New model:  PasswordResetOTP
+  – Stores a 6-digit single-use OTP tied to a Customer.
+  – Expires in OTP_EXPIRY_SECONDS (10 s) after creation.
+  – Once used it cannot be reused.
+
+Migration
+  python manage.py makemigrations && python manage.py migrate
+"""
+
+
+# Adjust these imports to match your project layout
+# from .models import Customer
+# from .base_models import TenantModel
+
+OTP_EXPIRY_SECONDS = 10          # tight window – intentional
+OTP_RESET_CHARGE   = 10          # ₦ debited before OTP is sent
+
+
+class PasswordResetOTP(models.Model):
+    """
+    A single-use, 10-second OTP that gates the password-reset flow.
+
+    Lifecycle
+      1. Tool creates record → OTP sent to customer via SMS.
+      2. Customer replies with OTP in WhatsApp within 10 s.
+      3. Tool validates:  not used  AND  timezone.now() < expires_at
+      4. On success:      is_used = True, tool emits a PasswordSetupToken link.
+      5. Any later attempt returns "OTP expired or already used."
+    """
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer    = models.ForeignKey(
+        "Customer",                        # string ref avoids circular import
+        on_delete=models.CASCADE,
+        related_name="password_reset_otps",
+    )
+    otp_code    = models.CharField(max_length=6)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    expires_at  = models.DateTimeField()   # created_at + OTP_EXPIRY_SECONDS
+    is_used     = models.BooleanField(default=False)
+    charge_ref  = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="VFD transaction reference for the ₦10 debit.",
+    )
+
+    # ── Class helpers ─────────────────────────────────────────────────────────
+    @classmethod
+    def generate_for(cls, customer) -> "PasswordResetOTP":
+        """Create and return a fresh OTP record (does NOT send SMS)."""
+        code = f"{random.randint(0, 999999):06d}"   # zero-padded 6-digit
+        obj  = cls.objects.create(
+            customer   = customer,
+            otp_code   = code,
+            expires_at = timezone.now() + timedelta(seconds=OTP_EXPIRY_SECONDS),
+        )
+        return obj
+
+    # ── Instance helpers ──────────────────────────────────────────────────────
+    @property
+    def is_valid(self) -> bool:
+        return (not self.is_used) and (timezone.now() < self.expires_at)
+
+    @property
+    def seconds_remaining(self) -> int:
+        delta = (self.expires_at - timezone.now()).total_seconds()
+        return max(0, int(delta))
+
+    def mark_used(self) -> None:
+        self.is_used = True
+        self.save(update_fields=["is_used"])
+
+    def __str__(self):
+        status = "valid" if self.is_valid else ("used" if self.is_used else "expired")
+        return f"OTP({self.otp_code}) → {self.customer.phone_number} [{status}]"
+
+    class Meta:
+        verbose_name        = "Password Reset OTP"
+        verbose_name_plural = "Password Reset OTPs"
+        ordering            = ["-created_at"]
+        # Ensure only one active (unused) OTP per customer at a time
+        indexes = [
+            models.Index(fields=["customer", "is_used", "expires_at"]),
+        ]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 3.  LOAN PROFILE  (new)
+# ──────────────────────────────────────────────────────────────────────────────
+class LoanTier(TenantModel):
+
+    name = models.CharField(max_length=20, choices=[
+        ('Bronze', 'Bronze'),
+        ('Silver', 'Silver'),
+        ('Gold', 'Gold')
+    ], default='Bronze')
+    
+    loan_limit = models.DecimalField(max_digits=12, decimal_places=2)
+    monthly_interest_rate = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        help_text="Monthly interest rate as a percentage (e.g. 2.5 for 2.5%)"
+    )
+    process_fee = models.DecimalField(max_digits=12, decimal_places=2)
+    late_fee = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.TextField(null=True, blank=True)
+
+    
+    def __str__(self):
+        return f"{self.name} - Limit: ₦{self.loan_limit} @ {self.monthly_interest_rate}%"
+    class Meta:
+     unique_together = ('tenant', 'name')
+    
+class LoanProfile(TenantModel):   # swap → TenantModel in your project
+    """
+    Captures credit-bureau data, social-media metrics, and AI-driven loan
+    eligibility for a customer.
+
+    Re-validation rule
+      • If `last_evaluated` is None  OR  older than 180 days  → refresh required.
+      • The tool checks `needs_revalidation()` before returning cached results.
+    """
+
+    customer       = models.OneToOneField(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="loan_profile",
+        to_field="account_number",      # link via account number
+    )
+    account_number = models.CharField(max_length=20, db_index=True)
+    loan_limit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # ── Credit Bureau ─────────────────────────────────────────────────────────
+    credit_rating           = models.CharField(max_length=10,  blank=True, default="")
+    credit_score            = models.IntegerField(null=True,   blank=True)
+    credit_bureau_reference = models.CharField(max_length=100, blank=True, default="")
+    credit_bureau_last_checked = models.DateTimeField(null=True, blank=True)
+
+    # ── Social Media URLs ─────────────────────────────────────────────────────
+    facebook_url   = models.URLField(blank=True, default="")
+    linkedin_url   = models.URLField(blank=True, default="")
+    instagram_url  = models.URLField(blank=True, default="")
+    twitter_url    = models.URLField(blank=True, default="")
+    tiktok_url     = models.URLField(blank=True, default="")
+
+    # ── Social Media Activity Metrics ─────────────────────────────────────────
+    facebook_followers     = models.PositiveIntegerField(default=0)
+    facebook_posts_30d     = models.PositiveIntegerField(default=0)
+    linkedin_connections   = models.PositiveIntegerField(default=0)
+    linkedin_posts_30d     = models.PositiveIntegerField(default=0)
+    instagram_followers    = models.PositiveIntegerField(default=0)
+    instagram_posts_30d    = models.PositiveIntegerField(default=0)
+    twitter_followers      = models.PositiveIntegerField(default=0)
+    twitter_tweets_30d     = models.PositiveIntegerField(default=0)
+    tiktok_followers       = models.PositiveIntegerField(default=0)
+    tiktok_videos_30d      = models.PositiveIntegerField(default=0)
+    overall_engagement_score = models.FloatField(null=True, blank=True,
+        help_text="Normalised 0–100 composite engagement score derived by AI.")
+
+    # ── AI Eligibility Evaluation ─────────────────────────────────────────────
+    loan_eligibility_score  = models.FloatField(
+        null=True, blank=True,
+        help_text="AI-computed eligibility score 0–100.",
+    )
+    eligibility_band = models.CharField(
+        max_length=20, blank=True, default="",
+        choices=[
+            ("excellent", "Excellent (80–100)"),
+            ("good",      "Good (60–79)"),
+            ("fair",      "Fair (40–59)"),
+            ("poor",      "Poor (0–39)"),
+        ],
+        help_text="Derived band based on eligibility score.",
+    )
+    eligibility_notes  = models.TextField(blank=True, default="")
+    raw_ai_response    = models.TextField(blank=True, default="",
+        help_text="Full JSON blob returned by the LLM evaluation call.")
+    last_evaluated     = models.DateTimeField(null=True, blank=True)
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+    REVALIDATION_DAYS = 180
+
+    def needs_revalidation(self) -> bool:
+        """Returns True if data is missing or older than REVALIDATION_DAYS."""
+        if not self.last_evaluated:
+            return True
+        age = (timezone.now() - self.last_evaluated).days
+        return age > self.REVALIDATION_DAYS
+
+    def set_eligibility_band(self) -> None:
+        """Auto-derive band from score. Call after setting loan_eligibility_score."""
+        score = self.loan_eligibility_score or 0
+        if score >= 80:
+            self.eligibility_band = "excellent"
+        elif score >= 60:
+            self.eligibility_band = "good"
+        elif score >= 40:
+            self.eligibility_band = "fair"
+        else:
+            self.eligibility_band = "poor"
+
+    def __str__(self):
+        return (
+            f"LoanProfile({self.account_number}) "
+            f"score={self.loan_eligibility_score} band={self.eligibility_band}"
+        )
+
+    class Meta:
+        verbose_name = "Loan Profile"
+        verbose_name_plural = "Loan Profiles"
+
+class LoanApplication(TenantModel):
+    # 🔹 Core Identity
+    loan_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    profile = models.ForeignKey(LoanProfile, on_delete=models.CASCADE, related_name='applications')
+    loan_tier = models.ForeignKey(LoanTier, on_delete=models.CASCADE, related_name='loan_tier')
+    # status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+
+    # 🔹 Loan Details
+    amount_requested = models.DecimalField(max_digits=10, decimal_places=2)
+    tenor = models.IntegerField(help_text="Loan duration in months")
+    # interest = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    # repayment_start_date = models.DateTimeField(_("Repayment start date"), null=True, blank=True)
+    # loan_purpose = models.CharField(max_length=200, null=True, blank=True)
+    # collateral = models.CharField("Collateral Offered (if any)", max_length=200, null=True, blank=True)
+
+    # 🔹 Financial Calculations (auto-calculated)
+    monthly_repayment = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    total_loan_due = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+
+    # 🔹 Banking Info
+    bank = models.CharField(max_length=100, null=True, blank=True)
+    date_user_accept =  models.DateTimeField(auto_now_add=False)
+    # accepted_by_approver = models.BooleanField(default=True)
+    disbursed = models.BooleanField(default=True)
+    # date_dibursed = models.DateTimeField(_("Date disbursed"), null=True, blank=True)
+
+    current_loan_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # 🔹 Social Media Evaluation
+    highest_sentiment_comment = models.TextField(null=True, blank=True)
+    highest_sentiment_date = models.DateTimeField(null=True, blank=True)
+    highest_sentiment_channel = models.CharField(max_length=50, null=True, blank=True)
+    
+    lowest_sentiment_comment = models.TextField(null=True, blank=True)
+    lowest_sentiment_date = models.DateTimeField(null=True, blank=True)
+    lowest_sentiment_channel = models.CharField(max_length=50, null=True, blank=True)
+
+    def __str__(self):
+        return f"Loan Application #{self.loan_id} for {self.profile.name}"
+
+    def save(self, *args, **kwargs):
+        interest_rate = Decimal(self.loan_tier.monthly_interest_rate) / 100
+        principal = self.amount_requested
+        monthly_interest = principal * interest_rate
+        self.monthly_repayment = principal + monthly_interest
+        self.total_loan_due = self.monthly_repayment * self.tenor
+
+
+        # self.monthly_repayment = self.amount_requested + (self.amount_requested * interest_rate)
+        # self.total_loan_due = self.monthly_repayment * self.tenor
+        super().save(*args, **kwargs)
+
+
+
 
 class Transaction(TenantModel):
     """
@@ -372,6 +765,7 @@ class Transaction(TenantModel):
     timestamp = models.DateTimeField(auto_now_add=False)
     def __str__(self):
         return f"{self.transaction_type} via {self.transaction_channel} - {self.amount}"
+
 
 
 class LoanReport(TenantModel):
@@ -421,6 +815,7 @@ class Prompt(TenantModel):
     agent_prompt = models.TextField(blank=True, null=True)
     global_answer_prompt = models.TextField(blank=True, null=True)
     tool_intent_map = models.JSONField(blank=True, null=True)
+    biller_items = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -511,6 +511,8 @@ def prepare_leave_application_tool(config: RunnableConfig, **kwargs):
             ]
         }
     )
+
+
 @tool("calculate_num_of_days_tool", args_schema=CalculateDaysRequest)
 def calculate_num_of_days_tool(startDate: str, endDate: str, holidays: List[str] = [], config: RunnableConfig = None):
     """
@@ -1165,6 +1167,7 @@ def sql_query_tool(query: str, state: dict) -> dict:
             - Use these tables to perform deep data analysis and visualizations.
             - Maximum number of turns of call is 3, otherwise return the result.
             - Limit your query to at most 5 results.
+            - Return your final answer as a JSON object with keys: "analysis" (text summary) and "data" (list of dictionaries representing the rows).
             """
         
         # Initialize a fresh agent for this specific call
@@ -1201,8 +1204,11 @@ def sql_query_tool(query: str, state: dict) -> dict:
             json_str = match.group(1) if match else result
             
             parsed = json.loads(json_str)
-            if isinstance(parsed, dict) and 'data' in parsed:
-                parsed_data = parsed['data']
+            if isinstance(parsed, dict):
+                if 'data' in parsed:
+                    parsed_data = parsed['data']
+                    if not isinstance(parsed_data, list):
+                        parsed_data = [parsed_data]  # Ensure list
                 analysis_text = parsed.get('analysis', "Here is the data you requested.")
         except Exception:
             # If parsing fails, it's likely just a text/markdown response. We use it as is.
@@ -1474,7 +1480,8 @@ def generate_visualization_tool(query: str, data: Any = None, state: Optional[di
     tenant_config = state.get("tenant_config", {})
     tenant_id = tenant_config.get("tenant_id", "unknown")
     conversation_id = state.get("conversation_id", "unknown")
-    
+    user_query = state.get("user_query", query)
+    tid = kwargs.get('current_tool_id') or "unknown_id"
     log_info(f"Generating Visualization for query: '{query}'", tenant_id, conversation_id)
     analysis_text = "" # Initialize in case of early failure
     try:
@@ -1491,6 +1498,9 @@ def generate_visualization_tool(query: str, data: Any = None, state: Optional[di
                     pass
             df = pd.DataFrame(data)
             sql_query = "Data provided directly via tool chaining"
+            if df.empty:
+                log_warning("Data provided is empty.", tenant_id, conversation_id)
+                return {"visualization_result": {"analysis": "No data available to visualize.", "image_base64": None}}
         else:
             # Step 2: Execute the query with Pandas
             tenant_config = state.get("tenant_config", {})
@@ -1505,7 +1515,7 @@ def generate_visualization_tool(query: str, data: Any = None, state: Optional[di
                 TENANT_DBS[tenant_id] = db
 
             # Step 1: Generate SQL from the natural language query (with few-shot prompt)
-            sql_generation_prompt = f"""Given the user's question, create a single, syntactically correct SQL query to retrieve the data needed for a chart.
+            sql_generation_prompt = f"""Given the user's question {user_query}, create a single, syntactically correct SQL query to retrieve the data needed for a chart.
                     Do not include any other text or explanation, just the SQL query itself.
 
                     Tables available: {db.get_table_info()}
@@ -1626,20 +1636,32 @@ def generate_visualization_tool(query: str, data: Any = None, state: Optional[di
         image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
         plt.close(fig)
         log_info(f"Successfully generated plot image (Base64 length: {len(image_base64)}).", tenant_id, conversation_id)
-
-        return {
-            "visualization_result": {
-                "analysis": analysis_text,
-                "image_base64": image_base64
-            }
-        }
-    
     except Exception as e:
         # --- ENHANCED LOGGING: Log the full exception traceback ---
         log_error(f"Error in visualization tool: {e}", tenant_id, conversation_id)
         analysis_text_on_error = analysis_text if analysis_text else f"Sorry, I encountered an unrecoverable error: {e}"
         return {"visualization_result": {"analysis": analysis_text_on_error, "image_base64": None}}
+     
+    # return {"visualization_result": {"analysis": analysis_text, "image_base64": image_base64}}   
+    log_info(f"Successfully generated plot image. Base64 size: {len(image_base64)} bytes.", tenant_id, conversation_id)
 
+    return Command(
+        update={
+            "visualization_image": image_base64,
+            "visualization_analysis": analysis_text,
+            "messages": [
+                ToolMessage(
+                    content=f"Visualization generated successfully. Analysis: {analysis_text}",
+                    tool_call_id=tid,
+                    name="generate_visualization_tool"
+                )
+            ]
+        }
+    )
+
+        
+       
+   
 
 
 # --- FULLY ENHANCED VISUALIZATION TOOL ---
