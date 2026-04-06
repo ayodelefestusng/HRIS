@@ -489,7 +489,7 @@ OTP_EXPIRY_SECONDS = 10          # tight window – intentional
 OTP_RESET_CHARGE   = 10          # ₦ debited before OTP is sent
 
 
-class PasswordResetOTP(models.Model):
+class PasswordResetOTP(TenantModel):
     """
     A single-use, 10-second OTP that gates the password-reset flow.
 
@@ -517,11 +517,12 @@ class PasswordResetOTP(models.Model):
 
     # ── Class helpers ─────────────────────────────────────────────────────────
     @classmethod
-    def generate_for(cls, customer) -> "PasswordResetOTP":
+    def generate_for(cls, customer, tenant=None) -> "PasswordResetOTP":
         """Create and return a fresh OTP record (does NOT send SMS)."""
         code = f"{random.randint(0, 999999):06d}"   # zero-padded 6-digit
         obj  = cls.objects.create(
             customer   = customer,
+            tenant     = tenant or (customer.tenant if hasattr(customer, 'tenant') else None),
             otp_code   = code,
             expires_at = timezone.now() + timedelta(seconds=OTP_EXPIRY_SECONDS),
         )

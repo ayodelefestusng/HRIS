@@ -289,7 +289,7 @@ from django.utils import timezone
 from django.views import View
 
 # ── Import from your models_update.py (adjust app label as needed) ────────────
-from .models import Customer, PasswordSetupToken   # adjust import path
+from .models import Customer, PasswordSetupToken,PasswordResetOTP,PasswordResetOTP   # adjust import path
 
 # ── Password complexity rule ──────────────────────────────────────────────────
 # Min 8 chars · 1 uppercase · 1 lowercase · 1 digit · 1 special char
@@ -749,6 +749,7 @@ class BankingLockedView(View):
     template_name = "banking/locked.html"
 
     def get(self, request, token, *args, **kwargs):
+        logger.warning(f"Accessing locked account page with token {token}")
         from django.utils import timezone
         phone = request.GET.get("phone", "")
         intent = request.GET.get("intent", "")
@@ -778,7 +779,7 @@ class BankingLockedView(View):
             customer.save(update_fields=['otp_code', 'otp_expiry'])
 
             logger.info(f"SMS Placeholder: Sent OTP {customer.otp_code} to {customer.phone_number}")
-
+        
         return redirect(f"/customer/banking/verify-otp/?phone={phone}&intent={intent}")
 
 
@@ -791,23 +792,135 @@ class BankingForgotPasswordView(View):
         logger.info(f"Rendering forgot password page for {phone} with intent: {intent}")
         return render(request, self.template_name, {"phone": phone, "intent": intent})
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, token, *args, **kwargs):
+        from django.utils import timezone
         phone = request.GET.get("phone", "")
-        intent = request.GET.get("intent", "")
-        customer = Customer.objects.filter(phone_number=phone).first()
-        if customer:
-            # Generate OTP
-            from django.utils import timezone
-            customer.otp_code = f"{random.randint(0, 999999):06d}"
-            customer.otp_expiry = timezone.now() + timedelta(minutes=5)
-            customer.save(update_fields=['otp_code', 'otp_expiry'])
+        intent = request.GET.get("intent", "forgot_password")
 
-            logger.info(f"SMS Placeholder: Sent OTP {customer.otp_code} to {customer.phone_number}")
+        # Validate token first
+        setup_token = PasswordSetupToken.objects.filter(token=token, is_used=False).first()
+        if not setup_token or (setup_token.expires_at and timezone.now() > setup_token.expires_at):
+            logger.warning(f"Invalid or expired reset link attempt for token {token}")
+            return HttpResponse("Invalid or expired reset link. Please request a new one via WhatsApp.", status=403)
 
-        return redirect(f"/customer/banking/verify-otp/?phone={phone}&intent={intent}")
+        customer = setup_token.customer
+        if customer.phone_number != phone:
+            logger.warning(f"Phone number mismatch for forgot password token {token}: expected {customer.phone_number}, got {phone}")
+            return HttpResponse("Account mismatch.", status=403)
+
+        # Fetch tenant with DMC fallback
+        tenant_id_raw = request.GET.get("tenant_id")
+        tenant_obj = None
+        if tenant_id_raw:
+            if str(tenant_id_raw).isdigit():
+                tenant_obj = Tenant.objects.filter(id=tenant_id_raw).first()
+            else:
+                tenant_obj = Tenant.objects.filter(code=tenant_id_raw).first()
+        
+        if not tenant_obj:
+            tenant_obj = Tenant.objects.filter(code="DMC").first()
+
+        # Generate 10-second OTP
+        otp_obj = PasswordResetOTP.generate_for(customer, tenant=tenant_obj)
+        
+        # Log/Mock SMS
+        logger.info(f"OTP for {customer.phone_number}: {otp_obj.otp_code} (Expires in 10s)")
+        
+        # In a real system, we'd trigger an SMS service here
+        # For now, we'll store it in the session or rely on the DB
+        request.session['pending_otp_ref'] = str(otp_obj.id)
+        logger.info(f"Redirecting to OTP verification for {customer.phone_number} with intent: {intent}")
+        return redirect(f"/customer/banking/verify-otp/{token}/?phone={phone}&intent={intent}")
 
 
 class BankingVerifyOTPView(View):
+    template_name = "banking/otp_verify.html"
+
+    def get(self, request, token, *args, **kwargs):
+        phone = request.GET.get("phone", "")
+        intent = request.GET.get("intent", "")
+        logger.info(f"Rendering OTP verification page for {phone} with intent: {intent}")
+        return render(request, self.template_name, {"phone": phone, "intent": intent, "token": token})
+
+    def post(self, request, token, *args, **kwargs):
+        from django.utils import timezone
+        phone = request.GET.get("phone", "")
+        intent = request.GET.get("intent", "")
+        otp_submitted = request.POST.get("otp_code", "")
+
+        otp_id = request.session.get('pending_otp_ref')
+        if not otp_id:
+            logger.warning(f"No pending OTP reference found in session for {phone}")
+            return render(request, self.template_name, {"phone": phone, "error": "No pending verification found."})
+
+        try:
+            otp_obj = PasswordResetOTP.objects.get(id=otp_id, is_used=False)
+            if not otp_obj.is_valid:
+                logger.warning(f"Expired or used OTP attempted for {phone}")
+                return render(request, self.template_name, {"phone": phone, "error": "Code expired. Please request a new one."})
+
+            if otp_obj.otp_code != otp_submitted:
+                logger.warning(f"Invalid OTP submitted for {phone}")
+                return render(request, self.template_name, {"phone": phone, "error": "Invalid code. Please try again."})
+
+            # Success
+            otp_obj.mark_used()
+            
+            # If it was a login/auth flow, we might mark customer as authenticated
+            # If it's forgot password, we redirect to SetPasswordView
+            if intent == "forgot_password" or intent == "change_password":
+                logger.info(f"OTP verified for {phone}. Redirecting to password setup with intent: {intent}")
+                return redirect(f"/customer/banking/set-password/{token}/?phone={phone}&intent={intent}")
+            logger.info(f"OTP verified for {phone}. Redirecting to success page with intent: {intent}")
+            return redirect(f"/customer/banking/password-success/")
+
+        except PasswordResetOTP.DoesNotExist:
+            logger.warning(f"Invalid OTP reference for {phone}")
+            return render(request, self.template_name, {"phone": phone, "error": "Invalid session."})
+
+
+class BankingChangePasswordView(View):
+    """
+    Initiates change password flow by requiring OTP first.
+    """
+    def get(self, request, token, *args, **kwargs):
+        phone = request.GET.get("phone", "")
+        intent = "change_password"
+        
+        setup_token = PasswordSetupToken.objects.filter(token=token, is_used=False).first()
+        if not setup_token:
+            logger.warning(f"Invalid token attempt for change password with token {token}")
+            return HttpResponse("Invalid token.", status=403)
+            
+        customer = setup_token.customer
+        
+        # Fetch tenant with DMC fallback
+        tenant_id_raw = request.GET.get("tenant_id")
+        tenant_obj = None
+        if tenant_id_raw:
+            if str(tenant_id_raw).isdigit():
+                tenant_obj = Tenant.objects.filter(id=tenant_id_raw).first()
+            else:
+                tenant_obj = Tenant.objects.filter(code=tenant_id_raw).first()
+        
+        if not tenant_obj:
+            tenant_obj = Tenant.objects.filter(code="DMC").first()
+
+        otp_obj = PasswordResetOTP.generate_for(customer, tenant=tenant_obj)
+        logger.info(f"Change Password OTP for {customer.phone_number}: {otp_obj.otp_code}")
+        request.session['pending_otp_ref'] = str(otp_obj.id)
+        logger.info(f"Redirecting to OTP verification for change password for {customer.phone_number} with intent: {intent}")
+        return redirect(f"/customer/banking/verify-otp/{token}/?phone={phone}&intent={intent}")
+        #     customer.otp_code = f"{random.randint(0, 999999):06d}"
+        #     customer.otp_expiry = timezone.now() + timedelta(minutes=5)
+        #     customer.save(update_fields=['otp_code', 'otp_expiry'])
+
+        #     logger.info(f"SMS Placeholder: Sent OTP {customer.otp_code} to {customer.phone_number}")
+
+        # return redirect(f"/customer/banking/verify-otp/?phone={phone}&intent={intent}")
+
+
+class BankingVerifyOTPViewv1(View):
     template_name = "banking/verify_otp.html"
 
     def get(self, request, *args, **kwargs):

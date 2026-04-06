@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     CRMPipelineView,OnboardTenantView,TenantDetailView,ChatView,
-    PasswordSuccessView, SetPasswordView,LoanApplicationView,LoanConfirmedView, BankingLoginView, BankingLockedView, BankingForgotPasswordView, BankingVerifyOTPView, update_biller_items,
+    PasswordSuccessView, SetPasswordView,LoanApplicationView,LoanConfirmedView, BankingLoginView, BankingLockedView, BankingForgotPasswordView, BankingVerifyOTPView, BankingChangePasswordView, update_biller_items,
 )
 
 app_name = "customer"
@@ -9,9 +9,10 @@ app_name = "customer"
 urlpatterns = [
     path('banking/login/<uuid:token>/', BankingLoginView.as_view(), name='banking_login'),
     path('banking/locked/<uuid:token>/', BankingLockedView.as_view(), name='banking_locked'),
-    path('banking/forgot-password/', BankingForgotPasswordView.as_view(), name='banking_forgot_password'),
-    path('banking/verify-otp/', BankingVerifyOTPView.as_view(), name='banking_verify_otp'),
-        path("update-billers/", update_biller_items, name="update_biller_items"),
+    path('banking/forgot-password/<uuid:token>/', BankingForgotPasswordView.as_view(), name='banking_forgot_password'),
+    path('banking/verify-otp/<uuid:token>/', BankingVerifyOTPView.as_view(), name='banking_verify_otp'),
+    path('banking/change-password/<uuid:token>/', BankingChangePasswordView.as_view(), name='banking_change_password'),
+    path("update-billers/", update_biller_items, name="update_biller_items"),
     # Main Interfaces
    
     
