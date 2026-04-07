@@ -15,7 +15,7 @@ from .models import(
 class CustomerAdmin(BaseTenantAdmin):  
     list_display = ('full_name', 'email', 'phone_number', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('first_name', 'last_name', 'email', 'phone_number')
+    search_fields = ('first_name', 'last_name', 'email', 'phone_number','account_number','nin')
 
 admin.site.register(Transaction)
 admin.site.register(Account)

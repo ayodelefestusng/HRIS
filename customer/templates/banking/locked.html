@@ -1,28 +1,208 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Account Locked</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #ffe6e6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .locked-box { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        h2 { color: #d9534f; }
-        p { color: #555; font-size: 16px; margin-bottom: 20px; }
-        .btn { display: inline-block; width: 100%; padding: 10px; background-color: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; text-decoration: none; box-sizing: border-box; }
-        .btn:hover { background-color: #c9302c; }
-    </style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="robots" content="noindex, nofollow"/>
+  <title>Account Locked | VectraPay</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --bg:#0B1622; --surface:#132030;
+      --border:rgba(255,255,255,0.08);
+      --brand:#0EA560; --brand-glow:rgba(14,165,96,0.25);
+      --danger:#F05252; --danger-glow:rgba(240,82,82,0.2);
+      --warning:#F59E0B;
+      --text:#F0F6FF; --text-muted:#7A92AB; --text-soft:#B8CCDB;
+    }
+    html { -webkit-text-size-adjust:100%; }
+    body {
+      min-height:100vh; font-family:'Outfit',sans-serif;
+      background:var(--bg);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:24px 16px; overflow-x:hidden;
+    }
+    body::before {
+      content:''; position:fixed; border-radius:50%;
+      width:500px; height:500px;
+      background:radial-gradient(circle, rgba(240,82,82,0.1) 0%, transparent 70%);
+      top:-120px; right:-100px; pointer-events:none;
+    }
+
+    .logo {
+      display:flex; align-items:center; gap:10px;
+      margin-bottom:32px;
+    }
+    .logo-mark {
+      width:40px; height:40px;
+      background:linear-gradient(135deg, var(--brand), #06C97A);
+      border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 0 20px var(--brand-glow); font-size:18px;
+    }
+    .logo-name { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--text); }
+    .logo-name span { color:var(--brand); }
+
+    .card {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:24px;
+      width:100%; max-width:420px;
+      overflow:hidden;
+      box-shadow:0 32px 80px rgba(0,0,0,0.5);
+      animation:slideUp .5s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes slideUp {
+      from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)}
+    }
+
+    /* Locked header */
+    .card-header {
+      background:linear-gradient(135deg, rgba(240,82,82,0.15), rgba(240,82,82,0.06));
+      border-bottom:1px solid rgba(240,82,82,0.2);
+      padding:36px 28px 28px;
+      text-align:center;
+    }
+    .lock-icon-wrap {
+      width:80px; height:80px; margin:0 auto 20px;
+      border-radius:20px;
+      background:rgba(240,82,82,0.12);
+      border:1.5px solid rgba(240,82,82,0.3);
+      display:flex; align-items:center; justify-content:center;
+      font-size:36px;
+      animation:wobble 3s ease-in-out infinite;
+    }
+    @keyframes wobble {
+      0%,90%,100%{transform:rotate(0)} 92%{transform:rotate(-8deg)} 96%{transform:rotate(8deg)}
+    }
+    .card-title {
+      font-family:'Syne',sans-serif;
+      font-size:22px; font-weight:700; color:#FCA5A5; margin-bottom:8px;
+    }
+    .card-desc { font-size:14px; color:var(--text-muted); line-height:1.6; }
+
+    .card-body { padding:28px; }
+
+    /* Attempts indicator */
+    .attempts-bar {
+      background:rgba(255,255,255,0.04);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:24px;
+    }
+    .attempts-label {
+      font-size:12px; color:var(--text-muted);
+      font-weight:600; text-transform:uppercase; letter-spacing:0.8px;
+      margin-bottom:10px;
+    }
+    .attempts-dots { display:flex; gap:8px; margin-bottom:8px; }
+    .dot-fill {
+      width:28px; height:8px; border-radius:4px;
+      background:var(--danger);
+      box-shadow:0 0 8px rgba(240,82,82,0.4);
+    }
+    .dot-empty {
+      width:28px; height:8px; border-radius:4px;
+      background:rgba(255,255,255,0.1);
+    }
+    .attempts-note { font-size:12px; color:rgba(240,82,82,0.8); }
+
+    /* Warning box */
+    .warning-box {
+      background:rgba(245,158,11,0.08);
+      border:1px solid rgba(245,158,11,0.2);
+      border-radius:12px;
+      padding:14px 16px;
+      display:flex; gap:10px;
+      margin-bottom:24px;
+    }
+    .warning-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+    .warning-text { font-size:13px; color:rgba(245,183,49,0.85); line-height:1.6; }
+
+    .btn-danger {
+      width:100%; padding:16px;
+      background:linear-gradient(135deg, #DC2626, #EF4444);
+      color:#fff; border:none; border-radius:14px;
+      font-family:'Outfit',sans-serif;
+      font-size:16px; font-weight:700;
+      cursor:pointer;
+      box-shadow:0 6px 24px var(--danger-glow);
+      transition:opacity .2s, transform .15s;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      -webkit-appearance:none;
+    }
+    .btn-danger:hover { opacity:.9; }
+    .btn-danger:active { transform:scale(.98); }
+
+    .card-footer {
+      padding:14px 28px 18px;
+      border-top:1px solid var(--border);
+      display:flex; justify-content:center; gap:20px; flex-wrap:wrap;
+    }
+    .badge { font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+    .badge-dot { width:5px; height:5px; border-radius:50%; background:var(--brand); opacity:.7; }
+  </style>
 </head>
 <body>
 
-<div class="locked-box">
-    <h2>Account Locked</h2>
-    <p>Your account has been locked due to too many failed login attempts.</p>
-    <p>To secure your account, please click below to reset your password. An OTP will be sent to your registered phone number.</p>
-    
-    <form action="/customer/banking/forgot-password/?phone={{ phone }}&intent={{ intent }}" method="POST">
-        {% csrf_token %}
-        <button type="submit" class="btn">Reset Password / Send OTP</button>
-    </form>
-</div>
+  <div class="logo">
+    <div class="logo-mark">🏦</div>
+    <span class="logo-name">Vectra<span>Pay</span></span>
+  </div>
 
+  <div class="card">
+    <div class="card-header">
+      <div class="lock-icon-wrap">🔒</div>
+      <h1 class="card-title">Account Locked</h1>
+      <p class="card-desc">Too many failed login attempts have triggered a security lock on your account.</p>
+    </div>
+
+    <div class="card-body">
+
+      <!-- Visual attempts bar -->
+      <div class="attempts-bar">
+        <div class="attempts-label">Failed Attempts</div>
+        <div class="attempts-dots">
+          <div class="dot-fill"></div>
+          <div class="dot-fill"></div>
+          <div class="dot-fill"></div>
+          <div class="dot-empty"></div>
+          <div class="dot-empty"></div>
+        </div>
+        <div class="attempts-note">3 of 5 maximum attempts reached</div>
+      </div>
+
+      <div class="warning-box">
+        <span class="warning-icon">⚠️</span>
+        <span class="warning-text">
+          To protect your funds, your account is temporarily locked. Reset your password to regain access. An OTP will be sent to your registered phone.
+        </span>
+      </div>
+
+      <form action="/customer/banking/forgot-password/?phone={{ phone }}&intent={{ intent }}" method="POST" id="resetForm">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger" id="resetBtn">
+          <span>🔓</span><span>Reset Password &amp; Send OTP</span>
+        </button>
+      </form>
+    </div>
+
+    <div class="card-footer">
+      <span class="badge"><span class="badge-dot"></span>256-bit SSL</span>
+      <span class="badge"><span class="badge-dot"></span>NDPR Compliant</span>
+      <span class="badge"><span class="badge-dot"></span>CBN Licensed</span>
+    </div>
+  </div>
+
+<script>
+  document.getElementById('resetForm').addEventListener('submit', function() {
+    const btn = document.getElementById('resetBtn');
+    btn.innerHTML = '<span>⏳</span><span>Sending OTP…</span>';
+    btn.style.opacity='0.7'; btn.style.pointerEvents='none';
+  });
+</script>
 </body>
 </html>
