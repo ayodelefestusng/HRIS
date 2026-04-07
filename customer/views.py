@@ -18,6 +18,9 @@ from .chat_bot import initialize_vector_store,process_message
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from typing import Any, Dict, List, Literal, Optional, Union, Annotated
+import requests
+fastapi_base_url = os.getenv("FASTAPI_BASE_URL")
+                
 @method_decorator(csrf_exempt, name='dispatch')
 class OnboardTenantView(View):
     def post(self, request):
@@ -421,7 +424,7 @@ class SetPasswordView(View):
             logger.error(f"Failed to trigger CTA webhook: {e}")
 
         return redirect(
-            f"/banking/password-success/"
+            f"customer/banking/password-success/"
             f"?name={customer.first_name}"
             f"&acc={customer.account_number}"
         )
@@ -579,8 +582,10 @@ class LoanApplicationView(View):
 
         # ── Engage user via chatbot CTA (Webhook to FastAPI) ──────────────────
         try:
-            import requests
-            requests.post("http://127.0.0.1:8000/webhook/trigger_cta", json={
+            # import requests
+            # import os
+            # fastapi_base_url = os.getenv("FASTAPI_BASE_URL")
+            requests.post(f"{fastapi_base_url}webhook/trigger_cta", json={
                 "phone_number": customer.phone_number,
                 "event": "loan_accepted",
                 "customer_name": customer.full_name,
@@ -720,9 +725,10 @@ class BankingLoginView(View):
 
             # Fastapi webhook CTA
             try:
-                import requests
+                
                 logger.info(f"Triggering CTA for {customer.phone_number} with intent: {intent}")
-                requests.post("http://127.0.0.1:8000/webhook/trigger_cta", json={
+                
+                requests.post(f"{fastapi_base_url}webhook/trigger_cta", json={
                     "phone_number": customer.phone_number,
                     "event": "auth_completed",
                     "customer_name": customer.full_name,

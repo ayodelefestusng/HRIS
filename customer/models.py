@@ -420,7 +420,8 @@ class Customer(TenantModel):
     class Meta:
         verbose_name = "Customer"
         verbose_name_plural = "Customers"
-        ordering = ["last_name", "first_name"]
+        ordering = ["created_at","last_name", "first_name"]
+        
 
 
 # ──────────────────────────────────────────────────────────────────────────────
