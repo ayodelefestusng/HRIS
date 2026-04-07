@@ -665,6 +665,15 @@ class BankingLoginView(View):
             logger.warning(f"Phone number mismatch for token {token}: expected {customer.phone_number}, got {phone}")
             return HttpResponse("Account mismatch.", status=403)
 
+        # Task 2: Redirection logic
+        if not customer.password_created:
+             logger.info(f"Password not set for {customer.phone_number}. Redirecting to set_password.")
+             return redirect(f"/customer/banking/set-password/{token}/?phone={phone}&intent={intent}")
+
+        if customer.password_locked:
+            logger.warning(f"Locked account access for {customer.phone_number}. Redirecting to banking_locked.")
+            return redirect(f"/customer/banking/locked/{token}/?phone={phone}&intent={intent}")
+
         account_number = customer.account_number
         full_name = customer.full_name
         logger.info(f"Rendering login page for {customer.phone_number} with intent: {intent}")
@@ -786,11 +795,22 @@ class BankingLockedView(View):
 class BankingForgotPasswordView(View):
     template_name = "banking/forgot_password.html"
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, token, *args, **kwargs):
+        from django.utils import timezone
         phone = request.GET.get("phone", "")
-        intent = request.GET.get("intent", "")
+        intent = request.GET.get("intent", "forgot_password")
+        
+        setup_token = PasswordSetupToken.objects.filter(token=token, is_used=False).first()
+        if not setup_token or (setup_token.expires_at and timezone.now() > setup_token.expires_at):
+             return HttpResponse("Invalid or expired reset link.", status=403)
+        
+        customer = setup_token.customer
+        if not customer.password_created:
+            logger.info(f"Password not set for {customer.phone_number}. Redirecting to set_password.")
+            return redirect(f"/customer/banking/set-password/{token}/?phone={phone}&intent={intent}")
+
         logger.info(f"Rendering forgot password page for {phone} with intent: {intent}")
-        return render(request, self.template_name, {"phone": phone, "intent": intent})
+        return render(request, self.template_name, {"phone": phone, "intent": intent, "token": token})
 
     def post(self, request, token, *args, **kwargs):
         from django.utils import timezone

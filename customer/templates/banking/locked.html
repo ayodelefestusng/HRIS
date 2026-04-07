@@ -18,7 +18,7 @@
     <p>Your account has been locked due to too many failed login attempts.</p>
     <p>To secure your account, please click below to reset your password. An OTP will be sent to your registered phone number.</p>
     
-    <form action="/banking/forgot-password/?phone={{ phone }}&intent={{ intent }}" method="POST">
+    <form action="/customer/banking/forgot-password/?phone={{ phone }}&intent={{ intent }}" method="POST">
         {% csrf_token %}
         <button type="submit" class="btn">Reset Password / Send OTP</button>
     </form>
