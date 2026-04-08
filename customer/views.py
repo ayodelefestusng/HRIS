@@ -20,7 +20,7 @@ from django.core.files.base import ContentFile
 from typing import Any, Dict, List, Literal, Optional, Union, Annotated
 import requests
 fastapi_base_url = os.getenv("FASTAPI_BASE_URL")
-                
+cta_url = f"{fastapi_base_url}/webhook/trigger_cta"        
 @method_decorator(csrf_exempt, name='dispatch')
 class OnboardTenantView(View):
     def post(self, request):
@@ -413,7 +413,8 @@ class SetPasswordView(View):
         # ── Engage user via chatbot CTA (Webhook to FastAPI) ──────────────────
         try:
             import requests
-            requests.post("http://127.0.0.1:8000/webhook/trigger_cta", json={
+            
+            requests.post(cta_url, json={
                 "phone_number": customer.phone_number,
                 "event": "password_created",
                 "customer_name": customer.full_name,
@@ -585,7 +586,7 @@ class LoanApplicationView(View):
             # import requests
             # import os
             # fastapi_base_url = os.getenv("FASTAPI_BASE_URL")
-            requests.post(f"{fastapi_base_url}webhook/trigger_cta", json={
+            requests.post(cta_url, json={
                 "phone_number": customer.phone_number,
                 "event": "loan_accepted",
                 "customer_name": customer.full_name,
@@ -728,7 +729,7 @@ class BankingLoginView(View):
                 
                 logger.info(f"Triggering CTA for {customer.phone_number} with intent: {intent}")
                 
-                requests.post(f"{fastapi_base_url}webhook/trigger_cta", json={
+                requests.post(cta_url, json={
                     "phone_number": customer.phone_number,
                     "event": "auth_completed",
                     "customer_name": customer.full_name,
