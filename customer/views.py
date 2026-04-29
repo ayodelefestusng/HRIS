@@ -737,7 +737,7 @@ class BankingLoginView(View):
                     # "tenant_id": getattr(customer, "tenant_id", "DMC"),
                     "tenant_id": str(getattr(customer, "tenant_id", "DMC")),  # cast to string
                     "pending_intent": intent
-                }, timeout=3)
+                }, timeout=10)
                 # requests.post("http://[IP_ADDRESS]/webhook/trigger_cta", json={
                 #     "phone_number": customer.phone_number,
                 #     "event": "auth_completed",
