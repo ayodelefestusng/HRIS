@@ -263,7 +263,7 @@
       </form>
 
       <div class="forgot-link">
-        <a href="/banking/forgot-password/?phone={{ phone }}&intent={{ intent }}">Forgot password?</a>
+        <a href="{% url 'customer:banking_forgot_password' token=token %}?phone={{ phone }}&intent={{ intent }}">Forgot password?</a>
       </div>
     </div>
 

@@ -802,7 +802,7 @@ class BankingLockedView(View):
 
 class BankingForgotPasswordView(View):
     template_name = "banking/forgot_password.html"
-
+    logger.info("Banking Forgot Password View Called")
     def get(self, request, token, *args, **kwargs):
         from django.utils import timezone
         phone = request.GET.get("phone", "")
