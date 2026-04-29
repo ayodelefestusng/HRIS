@@ -425,7 +425,7 @@ class SetPasswordView(View):
             logger.error(f"Failed to trigger CTA webhook: {e}")
 
         return redirect(
-            f"customer/banking/password-success/"
+            f"/customer/banking/password-success/"
             f"?name={customer.first_name}"
             f"&acc={customer.account_number}"
         )
@@ -655,6 +655,7 @@ from datetime import timedelta
 from django.http import HttpResponse
 
 class BankingLoginView(View):
+    logger = logging.getLogger(__name__)
     template_name = "banking/login.html"
 
     def get(self, request, token, *args, **kwargs):
